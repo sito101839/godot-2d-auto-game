@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://dvnxwa5xc48bq"]
+
+[ext_resource type="Script" path="res://battle/BattleManager.gd" id="1_battle_manager"]
+
+[node name="BattleScene" type="Node2D"]
+
+[node name="BattleManager" type="Node" parent="."]
+script = ExtResource("1_battle_manager")
+
+[node name="Units" type="Node2D" parent="."]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="ResultLabel" type="Label" parent="UI"]
+offset_left = 360.0
+offset_top = 24.0
+offset_right = 920.0
+offset_bottom = 92.0
+theme_override_font_sizes/font_size = 42
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(0, 0)
+enabled = true
+zoom = Vector2(1.15, 1.15)
