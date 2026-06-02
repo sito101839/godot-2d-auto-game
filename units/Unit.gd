@@ -112,8 +112,8 @@ func take_damage(amount: int) -> void:
 
 
 func _find_target() -> Unit:
-	var selected_enemy: Unit = null
-	var best_distance: float = INF
+	var enemies: Array[Unit] = []
+	var enemies_in_range: Array[Unit] = []
 
 	for node: Node in get_tree().get_nodes_in_group("units"):
 		var unit := node as Unit
@@ -122,6 +122,21 @@ func _find_target() -> Unit:
 		if unit.team_id == team_id or unit.is_dead:
 			continue
 
+		enemies.append(unit)
+		if global_position.distance_to(unit.global_position) <= attack_range:
+			enemies_in_range.append(unit)
+
+	if not enemies_in_range.is_empty():
+		return _select_best_target(enemies_in_range)
+
+	return _select_best_target(enemies)
+
+
+func _select_best_target(candidates: Array[Unit]) -> Unit:
+	var selected_enemy: Unit = null
+	var best_distance: float = INF
+
+	for unit: Unit in candidates:
 		if selected_enemy == null or _is_better_target(unit, selected_enemy, best_distance):
 			selected_enemy = unit
 			best_distance = global_position.distance_to(unit.global_position)

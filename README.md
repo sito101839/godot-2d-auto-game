@@ -24,4 +24,5 @@ godot --path .
 godot --headless --path . --quit
 godot --headless --path . --script res://scripts/tools/hello_world_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/battle_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/target_selection_smoke_test.gd
 ```
