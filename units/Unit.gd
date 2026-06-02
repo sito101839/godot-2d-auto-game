@@ -7,6 +7,8 @@ enum FormationRole { FRONTLINE, BACKLINE, FLANKER }
 const RANGED_ATTACK_RANGE_THRESHOLD: float = 100.0
 const BACKLINE_OFFSET: float = 70.0
 const BACKLINE_TOLERANCE: float = 18.0
+const SEPARATION_RADIUS: float = 42.0
+const SEPARATION_WEIGHT: float = 1.25
 const SLASH_EFFECT_SCENE := preload("res://effects/SlashEffect.tscn")
 const PROJECTILE_EFFECT_SCENE := preload("res://effects/ProjectileEffect.tscn")
 
@@ -54,14 +56,15 @@ func _physics_process(delta: float) -> void:
 	var distance_to_target: float = global_position.distance_to(target.global_position)
 	if distance_to_target > attack_range:
 		var move_target: Vector2 = _get_move_target_position(target.global_position)
-		var direction: Vector2 = global_position.direction_to(move_target)
+		var direction: Vector2 = _get_separated_direction(global_position.direction_to(move_target))
 		if global_position.distance_to(move_target) <= 2.0:
 			direction = Vector2.ZERO
 		velocity = direction * move_speed
 		move_and_slide()
 		return
 
-	velocity = Vector2.ZERO
+	var separation_direction: Vector2 = _get_separation_direction()
+	velocity = separation_direction * move_speed * 0.65
 	move_and_slide()
 	_try_attack()
 
@@ -212,6 +215,33 @@ func _get_frontline_center() -> Vector2:
 		return Vector2.INF
 
 	return sum / float(count)
+
+
+func _get_separated_direction(base_direction: Vector2) -> Vector2:
+	var separation_direction: Vector2 = _get_separation_direction()
+	if separation_direction == Vector2.ZERO:
+		return base_direction
+
+	return (base_direction + separation_direction * SEPARATION_WEIGHT).normalized()
+
+
+func _get_separation_direction() -> Vector2:
+	var push := Vector2.ZERO
+
+	for node: Node in get_tree().get_nodes_in_group("units"):
+		var unit := node as Unit
+		if unit == null or unit == self or unit.is_dead:
+			continue
+
+		var distance: float = global_position.distance_to(unit.global_position)
+		if distance <= 0.01 or distance >= SEPARATION_RADIUS:
+			continue
+
+		var away_direction: Vector2 = unit.global_position.direction_to(global_position)
+		var strength: float = (SEPARATION_RADIUS - distance) / SEPARATION_RADIUS
+		push += away_direction * strength
+
+	return push.normalized()
 
 
 func _try_attack() -> void:

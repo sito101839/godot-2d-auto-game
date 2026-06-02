@@ -94,6 +94,14 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	for _frame_index: int in 120:
+		await physics_frame
+
+	if _has_unit_overlap(units_parent):
+		push_error("Units overlapped after separation steering had time to settle.")
+		_fail(battle)
+		return
+
 	var effects_node := battle.get_node_or_null("Effects")
 	var saw_attack_effect: bool = false
 	for frame_index: int in 1800:
@@ -172,3 +180,19 @@ func _backline_is_behind_frontline(units_parent: Node, team_id: int) -> bool:
 		return backline_x < frontline_center_x
 
 	return backline_x > frontline_center_x
+
+
+func _has_unit_overlap(units_parent: Node) -> bool:
+	var units: Array[Node] = []
+	for child: Node in units_parent.get_children():
+		if not child.get("is_dead"):
+			units.append(child)
+
+	for first_index: int in units.size():
+		for second_index: int in range(first_index + 1, units.size()):
+			var first_position: Vector2 = units[first_index].get("global_position")
+			var second_position: Vector2 = units[second_index].get("global_position")
+			if first_position.distance_to(second_position) < 24.0:
+				return true
+
+	return false
