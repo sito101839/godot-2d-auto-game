@@ -3,6 +3,10 @@ extends CharacterBody2D
 
 enum TargetPolicy { NEAREST, LOW_HP, HIGH_HP }
 
+const RANGED_ATTACK_RANGE_THRESHOLD: float = 100.0
+const SLASH_EFFECT_SCENE := preload("res://effects/SlashEffect.tscn")
+const PROJECTILE_EFFECT_SCENE := preload("res://effects/ProjectileEffect.tscn")
+
 @export var team_id: int = 0
 @export var unit_type_name: String = "Warrior"
 @export var target_policy: TargetPolicy = TargetPolicy.NEAREST
@@ -16,6 +20,7 @@ var hp: int
 var target: Unit = null
 var attack_cooldown: float = 0.0
 var is_dead: bool = false
+var effects_parent: Node2D = null
 
 @onready var visual: Polygon2D = $Visual
 @onready var hp_bar: ProgressBar = $HPBar
@@ -62,7 +67,8 @@ func setup(
 	new_max_hp: int,
 	new_attack_power: int,
 	new_attack_range: float,
-	new_move_speed: float
+	new_move_speed: float,
+	new_effects_parent: Node2D
 ) -> void:
 	team_id = new_team_id
 	unit_type_name = new_unit_type_name
@@ -71,6 +77,7 @@ func setup(
 	attack_power = new_attack_power
 	attack_range = new_attack_range
 	move_speed = new_move_speed
+	effects_parent = new_effects_parent
 	hp = max_hp
 
 	if is_node_ready():
@@ -134,8 +141,37 @@ func _try_attack() -> void:
 	if target == null or not is_instance_valid(target) or target.is_dead:
 		return
 
-	target.take_damage(attack_power)
+	_spawn_attack_effect()
 	attack_cooldown = attack_interval
+
+
+func _spawn_attack_effect() -> void:
+	if effects_parent == null or not is_instance_valid(effects_parent):
+		target.take_damage(attack_power)
+		return
+
+	var direction: Vector2 = global_position.direction_to(target.global_position)
+	if direction == Vector2.ZERO:
+		direction = Vector2.RIGHT
+
+	if attack_range >= RANGED_ATTACK_RANGE_THRESHOLD:
+		_spawn_projectile_effect(direction)
+	else:
+		_spawn_slash_effect(direction)
+
+
+func _spawn_slash_effect(direction: Vector2) -> void:
+	var slash := SLASH_EFFECT_SCENE.instantiate() as Area2D
+	effects_parent.add_child(slash)
+	slash.global_position = global_position
+	slash.call("setup", team_id, attack_power, direction, visual.color.lightened(0.35))
+
+
+func _spawn_projectile_effect(direction: Vector2) -> void:
+	var projectile := PROJECTILE_EFFECT_SCENE.instantiate() as Area2D
+	effects_parent.add_child(projectile)
+	projectile.global_position = global_position + direction * 24.0
+	projectile.call("setup", team_id, attack_power, direction, visual.color.lightened(0.25), target)
 
 
 func _update_hp_bar() -> void:

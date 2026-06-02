@@ -52,11 +52,13 @@ func _run() -> void:
 
 	var saw_non_warrior: bool = false
 	var saw_policy_variation: bool = false
+	var starting_hp_total: int = 0
 	for child: Node in units_parent.get_children():
 		if child.get("unit_type_name") != "Warrior":
 			saw_non_warrior = true
 		if child.get("target_policy") != 0:
 			saw_policy_variation = true
+		starting_hp_total += child.get("hp")
 
 	if not saw_non_warrior:
 		push_error("Expected at least one non-warrior unit from setup defaults.")
@@ -68,9 +70,17 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	for frame_index: int in 900:
+	var effects_node := battle.get_node_or_null("Effects")
+	var saw_attack_effect: bool = false
+	for frame_index: int in 1200:
 		await physics_frame
+		if effects_node != null and effects_node.get_child_count() > 0:
+			saw_attack_effect = true
 		if result_label.text != "":
+			if not saw_attack_effect:
+				push_error("Battle finished before any attack effect was observed.")
+				_fail(battle)
+				return
 			var result_text: String = result_label.text
 			manager.call("_show_prep_screen")
 			await process_frame
@@ -88,7 +98,13 @@ func _run() -> void:
 			quit(0)
 			return
 
-	push_error("Battle did not finish within the smoke test frame budget.")
+	var current_hp_total: int = 0
+	for child: Node in units_parent.get_children():
+		current_hp_total += child.get("hp")
+	push_error(
+		"Battle did not finish within the smoke test frame budget. effects=%s hp_start=%d hp_now=%d units=%d"
+		% [saw_attack_effect, starting_hp_total, current_hp_total, units_parent.get_child_count()]
+	)
 	_fail(battle)
 
 

@@ -38,6 +38,7 @@ const TARGET_POLICIES: Array[Dictionary] = [
 ]
 
 @onready var units_parent: Node2D = $"../Units"
+@onready var effects_parent: Node2D = $"../Effects"
 @onready var result_label: Label = $"../UI/ResultLabel"
 @onready var prep_panel: Control = $"../UI/PrepPanel"
 @onready var config_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/ConfigRows"
@@ -73,6 +74,7 @@ func start_battle() -> void:
 	return_button.visible = false
 	result_label.text = ""
 	_clear_units()
+	_clear_effects()
 
 	var blue_positions: Array[Vector2] = [
 		Vector2(-250.0, -80.0),
@@ -110,6 +112,7 @@ func _show_prep_screen() -> void:
 	return_button.visible = false
 	result_label.text = ""
 	_clear_units()
+	_clear_effects()
 	_refresh_prep_buttons()
 	start_button.grab_focus()
 
@@ -226,13 +229,19 @@ func _spawn_unit(
 		unit_data["hp"],
 		unit_data["attack_power"],
 		unit_data["attack_range"],
-		unit_data["move_speed"]
+		unit_data["move_speed"],
+		effects_parent
 	)
 	unit.reset_physics_interpolation()
 
 
 func _clear_units() -> void:
 	for child: Node in units_parent.get_children():
+		child.queue_free()
+
+
+func _clear_effects() -> void:
+	for child: Node in effects_parent.get_children():
 		child.queue_free()
 
 

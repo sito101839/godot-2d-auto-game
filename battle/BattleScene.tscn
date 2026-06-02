@@ -9,6 +9,8 @@ script = ExtResource("1_battle_manager")
 
 [node name="Units" type="Node2D" parent="."]
 
+[node name="Effects" type="Node2D" parent="."]
+
 [node name="UI" type="CanvasLayer" parent="."]
 
 [node name="ResultLabel" type="Label" parent="UI"]
