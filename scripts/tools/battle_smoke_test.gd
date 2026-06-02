@@ -52,12 +52,18 @@ func _run() -> void:
 
 	var saw_non_warrior: bool = false
 	var saw_policy_variation: bool = false
+	var saw_backline: bool = false
+	var saw_flanker: bool = false
 	var starting_hp_total: int = 0
 	for child: Node in units_parent.get_children():
 		if child.get("unit_type_name") != "Warrior":
 			saw_non_warrior = true
 		if child.get("target_policy") != 0:
 			saw_policy_variation = true
+		if child.get("formation_role") == 1:
+			saw_backline = true
+		if child.get("formation_role") == 2:
+			saw_flanker = true
 		starting_hp_total += child.get("hp")
 
 	if not saw_non_warrior:
@@ -70,9 +76,27 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	if not saw_backline or not saw_flanker:
+		push_error("Expected backline and flanker roles from setup defaults.")
+		_fail(battle)
+		return
+
+	for _frame_index: int in 90:
+		await physics_frame
+
+	if not _backline_is_behind_frontline(units_parent, 0):
+		push_error("Blue backline did not move behind its frontline center.")
+		_fail(battle)
+		return
+
+	if not _backline_is_behind_frontline(units_parent, 1):
+		push_error("Red backline did not move behind its frontline center.")
+		_fail(battle)
+		return
+
 	var effects_node := battle.get_node_or_null("Effects")
 	var saw_attack_effect: bool = false
-	for frame_index: int in 1200:
+	for frame_index: int in 1800:
 		await physics_frame
 		if effects_node != null and effects_node.get_child_count() > 0:
 			saw_attack_effect = true
@@ -99,11 +123,22 @@ func _run() -> void:
 			return
 
 	var current_hp_total: int = 0
+	var unit_snapshots: Array[String] = []
 	for child: Node in units_parent.get_children():
 		current_hp_total += child.get("hp")
+		unit_snapshots.append(
+			"%s team=%d role=%d pos=%s hp=%d"
+			% [
+				child.get("unit_type_name"),
+				child.get("team_id"),
+				child.get("formation_role"),
+				child.get("global_position"),
+				child.get("hp"),
+			]
+		)
 	push_error(
-		"Battle did not finish within the smoke test frame budget. effects=%s hp_start=%d hp_now=%d units=%d"
-		% [saw_attack_effect, starting_hp_total, current_hp_total, units_parent.get_child_count()]
+		"Battle did not finish within the smoke test frame budget. effects=%s hp_start=%d hp_now=%d units=%d snapshots=%s"
+		% [saw_attack_effect, starting_hp_total, current_hp_total, units_parent.get_child_count(), unit_snapshots]
 	)
 	_fail(battle)
 
@@ -113,3 +148,27 @@ func _fail(battle: Node) -> void:
 		battle.queue_free()
 	await process_frame
 	quit(1)
+
+
+func _backline_is_behind_frontline(units_parent: Node, team_id: int) -> bool:
+	var frontline_sum: float = 0.0
+	var frontline_count: int = 0
+	var backline_x: float = INF
+
+	for child: Node in units_parent.get_children():
+		if child.get("team_id") != team_id:
+			continue
+		if child.get("formation_role") == 0:
+			frontline_sum += child.get("global_position").x
+			frontline_count += 1
+		elif child.get("formation_role") == 1:
+			backline_x = child.get("global_position").x
+
+	if frontline_count == 0 or backline_x == INF:
+		return false
+
+	var frontline_center_x: float = frontline_sum / float(frontline_count)
+	if team_id == 0:
+		return backline_x < frontline_center_x
+
+	return backline_x > frontline_center_x

@@ -37,6 +37,12 @@ const TARGET_POLICIES: Array[Dictionary] = [
 	{"name": "High HP", "value": 2},
 ]
 
+const FORMATION_ROLES: Array[Dictionary] = [
+	{"name": "Frontline", "value": 0},
+	{"name": "Backline", "value": 1},
+	{"name": "Flanker", "value": 2},
+]
+
 @onready var units_parent: Node2D = $"../Units"
 @onready var effects_parent: Node2D = $"../Effects"
 @onready var result_label: Label = $"../UI/ResultLabel"
@@ -50,8 +56,11 @@ var blue_unit_choices: Array[int] = [0, 1, 2]
 var red_unit_choices: Array[int] = [0, 1, 2]
 var blue_target_choices: Array[int] = [0, 1, 2]
 var red_target_choices: Array[int] = [0, 1, 2]
+var blue_role_choices: Array[int] = [0, 1, 2]
+var red_role_choices: Array[int] = [0, 1, 2]
 var unit_buttons: Array[Button] = []
 var target_buttons: Array[Button] = []
+var role_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -93,7 +102,8 @@ func start_battle() -> void:
 			BLUE_COLOR,
 			blue_positions[index],
 			blue_unit_choices[index],
-			blue_target_choices[index]
+			blue_target_choices[index],
+			blue_role_choices[index]
 		)
 
 	for index: int in red_positions.size():
@@ -102,7 +112,8 @@ func start_battle() -> void:
 			RED_COLOR,
 			red_positions[index],
 			red_unit_choices[index],
-			red_target_choices[index]
+			red_target_choices[index],
+			red_role_choices[index]
 		)
 
 
@@ -123,6 +134,7 @@ func _build_prep_rows() -> void:
 
 	unit_buttons.clear()
 	target_buttons.clear()
+	role_buttons.clear()
 
 	_add_team_header("Blue Team")
 	for slot_index: int in 3:
@@ -166,6 +178,13 @@ func _add_config_row(team_id: int, slot_index: int) -> void:
 	row.add_child(target_button)
 	target_buttons.append(target_button)
 
+	var role_button := Button.new()
+	role_button.custom_minimum_size = Vector2(132.0, 0.0)
+	role_button.focus_mode = Control.FOCUS_ALL
+	role_button.pressed.connect(_cycle_role_choice.bind(team_id, slot_index))
+	row.add_child(role_button)
+	role_buttons.append(role_button)
+
 
 func _cycle_unit_choice(team_id: int, slot_index: int) -> void:
 	var choices: Array[int] = blue_unit_choices if team_id == BLUE_TEAM_ID else red_unit_choices
@@ -179,24 +198,41 @@ func _cycle_target_choice(team_id: int, slot_index: int) -> void:
 	_refresh_prep_buttons()
 
 
+func _cycle_role_choice(team_id: int, slot_index: int) -> void:
+	var choices: Array[int] = blue_role_choices if team_id == BLUE_TEAM_ID else red_role_choices
+	choices[slot_index] = (choices[slot_index] + 1) % FORMATION_ROLES.size()
+	_refresh_prep_buttons()
+
+
 func _refresh_prep_buttons() -> void:
 	var button_index: int = 0
 
 	for slot_index: int in 3:
-		_update_config_buttons(button_index, blue_unit_choices[slot_index], blue_target_choices[slot_index])
+		_update_config_buttons(
+			button_index,
+			blue_unit_choices[slot_index],
+			blue_target_choices[slot_index],
+			blue_role_choices[slot_index]
+		)
 		button_index += 1
 
 	for slot_index: int in 3:
-		_update_config_buttons(button_index, red_unit_choices[slot_index], red_target_choices[slot_index])
+		_update_config_buttons(
+			button_index,
+			red_unit_choices[slot_index],
+			red_target_choices[slot_index],
+			red_role_choices[slot_index]
+		)
 		button_index += 1
 
 
-func _update_config_buttons(button_index: int, unit_index: int, target_index: int) -> void:
-	if button_index >= unit_buttons.size() or button_index >= target_buttons.size():
+func _update_config_buttons(button_index: int, unit_index: int, target_index: int, role_index: int) -> void:
+	if button_index >= unit_buttons.size() or button_index >= target_buttons.size() or button_index >= role_buttons.size():
 		return
 
 	var unit_data: Dictionary = UNIT_DEFINITIONS[unit_index]
 	var target_data: Dictionary = TARGET_POLICIES[target_index]
+	var role_data: Dictionary = FORMATION_ROLES[role_index]
 	unit_buttons[button_index].text = "%s  HP:%d ATK:%d RNG:%d SPD:%d" % [
 		unit_data["name"],
 		unit_data["hp"],
@@ -205,6 +241,7 @@ func _update_config_buttons(button_index: int, unit_index: int, target_index: in
 		int(unit_data["move_speed"]),
 	]
 	target_buttons[button_index].text = "Target: %s" % target_data["name"]
+	role_buttons[button_index].text = "Role: %s" % role_data["name"]
 
 
 func _spawn_unit(
@@ -212,10 +249,12 @@ func _spawn_unit(
 	color: Color,
 	spawn_position: Vector2,
 	unit_definition_index: int,
-	target_policy_index: int
+	target_policy_index: int,
+	formation_role_index: int
 ) -> void:
 	var unit_data: Dictionary = UNIT_DEFINITIONS[unit_definition_index]
 	var target_data: Dictionary = TARGET_POLICIES[target_policy_index]
+	var role_data: Dictionary = FORMATION_ROLES[formation_role_index]
 	var unit := UNIT_SCENE.instantiate() as CharacterBody2D
 
 	units_parent.add_child(unit)
@@ -226,6 +265,7 @@ func _spawn_unit(
 		color,
 		unit_data["name"],
 		target_data["value"],
+		role_data["value"],
 		unit_data["hp"],
 		unit_data["attack_power"],
 		unit_data["attack_range"],

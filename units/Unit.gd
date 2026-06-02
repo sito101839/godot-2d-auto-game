@@ -2,14 +2,18 @@ class_name Unit
 extends CharacterBody2D
 
 enum TargetPolicy { NEAREST, LOW_HP, HIGH_HP }
+enum FormationRole { FRONTLINE, BACKLINE, FLANKER }
 
 const RANGED_ATTACK_RANGE_THRESHOLD: float = 100.0
+const BACKLINE_OFFSET: float = 120.0
+const BACKLINE_TOLERANCE: float = 18.0
 const SLASH_EFFECT_SCENE := preload("res://effects/SlashEffect.tscn")
 const PROJECTILE_EFFECT_SCENE := preload("res://effects/ProjectileEffect.tscn")
 
 @export var team_id: int = 0
 @export var unit_type_name: String = "Warrior"
 @export var target_policy: TargetPolicy = TargetPolicy.NEAREST
+@export var formation_role: FormationRole = FormationRole.FRONTLINE
 @export var max_hp: int = 100
 @export var attack_power: int = 10
 @export var attack_range: float = 80.0
@@ -48,8 +52,18 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var distance_to_target: float = global_position.distance_to(target.global_position)
+	var formation_position: Vector2 = _get_formation_position()
+	if formation_position != Vector2.INF and global_position.distance_to(formation_position) > BACKLINE_TOLERANCE:
+		var formation_direction: Vector2 = global_position.direction_to(formation_position)
+		velocity = formation_direction * move_speed
+		move_and_slide()
+		return
+
 	if distance_to_target > attack_range:
-		var direction: Vector2 = global_position.direction_to(target.global_position)
+		var move_target: Vector2 = _get_move_target_position(target.global_position)
+		var direction: Vector2 = global_position.direction_to(move_target)
+		if global_position.distance_to(move_target) <= 2.0:
+			direction = Vector2.ZERO
 		velocity = direction * move_speed
 		move_and_slide()
 		return
@@ -64,6 +78,7 @@ func setup(
 	color: Color,
 	new_unit_type_name: String,
 	new_target_policy: TargetPolicy,
+	new_formation_role: FormationRole,
 	new_max_hp: int,
 	new_attack_power: int,
 	new_attack_range: float,
@@ -73,6 +88,7 @@ func setup(
 	team_id = new_team_id
 	unit_type_name = new_unit_type_name
 	target_policy = new_target_policy
+	formation_role = new_formation_role
 	max_hp = new_max_hp
 	attack_power = new_attack_power
 	attack_range = new_attack_range
@@ -135,6 +151,51 @@ func _is_better_target(candidate: Unit, current: Unit, current_distance: float) 
 	return candidate_distance < current_distance
 
 
+func _get_move_target_position(enemy_position: Vector2) -> Vector2:
+	var formation_position: Vector2 = _get_formation_position()
+	if formation_position == Vector2.INF:
+		return enemy_position
+
+	var desired_position := Vector2(formation_position.x, enemy_position.y)
+
+	if absf(global_position.x - formation_position.x) <= BACKLINE_TOLERANCE:
+		desired_position.x = global_position.x
+
+	return desired_position
+
+
+func _get_formation_position() -> Vector2:
+	if formation_role != FormationRole.BACKLINE:
+		return Vector2.INF
+
+	var frontline_center: Vector2 = _get_frontline_center()
+	if frontline_center == Vector2.INF:
+		return Vector2.INF
+
+	var rear_direction: float = -1.0 if team_id == 0 else 1.0
+	return Vector2(frontline_center.x + rear_direction * BACKLINE_OFFSET, global_position.y)
+
+
+func _get_frontline_center() -> Vector2:
+	var sum := Vector2.ZERO
+	var count: int = 0
+
+	for node: Node in get_tree().get_nodes_in_group("units"):
+		var unit := node as Unit
+		if unit == null or unit.is_dead:
+			continue
+		if unit.team_id != team_id or unit.formation_role != FormationRole.FRONTLINE:
+			continue
+
+		sum += unit.global_position
+		count += 1
+
+	if count == 0:
+		return Vector2.INF
+
+	return sum / float(count)
+
+
 func _try_attack() -> void:
 	if attack_cooldown > 0.0:
 		return
@@ -186,7 +247,16 @@ func _update_name_label() -> void:
 	if name_label == null:
 		return
 
-	name_label.text = unit_type_name.substr(0, 1)
+	var role_suffix: String = "F"
+	match formation_role:
+		FormationRole.BACKLINE:
+			role_suffix = "B"
+		FormationRole.FLANKER:
+			role_suffix = "S"
+		_:
+			role_suffix = "F"
+
+	name_label.text = "%s%s" % [unit_type_name.substr(0, 1), role_suffix]
 
 
 func _die() -> void:
