@@ -8,7 +8,7 @@ Godot 4.6 の 2D オートバトル最小プロトタイプです。
 - Warrior、Archer、Rogue の3種類のユニットを選択できます。
 - Nearest、Low HP、High HP の3種類のターゲット方針を選択できます。
 - Frontline、Backline、Flanker の3種類の隊列ロールを選択できます。
-- Backline は味方 Frontline の中心位置より後ろを維持します。
+- Backline は攻撃参加を優先しつつ、味方 Frontline の中心位置より前に出すぎないように動きます。
 - 近距離ユニットは斬撃、遠距離ユニットは弾の攻撃エフェクトでダメージを与えます。
 - 準備画面から戦闘を開始し、勝敗後に準備画面へ戻れます。
 

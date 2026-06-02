@@ -5,7 +5,7 @@ enum TargetPolicy { NEAREST, LOW_HP, HIGH_HP }
 enum FormationRole { FRONTLINE, BACKLINE, FLANKER }
 
 const RANGED_ATTACK_RANGE_THRESHOLD: float = 100.0
-const BACKLINE_OFFSET: float = 120.0
+const BACKLINE_OFFSET: float = 70.0
 const BACKLINE_TOLERANCE: float = 18.0
 const SLASH_EFFECT_SCENE := preload("res://effects/SlashEffect.tscn")
 const PROJECTILE_EFFECT_SCENE := preload("res://effects/ProjectileEffect.tscn")
@@ -52,13 +52,6 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var distance_to_target: float = global_position.distance_to(target.global_position)
-	var formation_position: Vector2 = _get_formation_position()
-	if formation_position != Vector2.INF and global_position.distance_to(formation_position) > BACKLINE_TOLERANCE:
-		var formation_direction: Vector2 = global_position.direction_to(formation_position)
-		velocity = formation_direction * move_speed
-		move_and_slide()
-		return
-
 	if distance_to_target > attack_range:
 		var move_target: Vector2 = _get_move_target_position(target.global_position)
 		var direction: Vector2 = global_position.direction_to(move_target)
@@ -152,28 +145,38 @@ func _is_better_target(candidate: Unit, current: Unit, current_distance: float) 
 
 
 func _get_move_target_position(enemy_position: Vector2) -> Vector2:
-	var formation_position: Vector2 = _get_formation_position()
-	if formation_position == Vector2.INF:
+	if formation_role != FormationRole.BACKLINE:
 		return enemy_position
 
-	var desired_position := Vector2(formation_position.x, enemy_position.y)
+	var frontline_center: Vector2 = _get_frontline_center()
+	if frontline_center == Vector2.INF:
+		return enemy_position
 
-	if absf(global_position.x - formation_position.x) <= BACKLINE_TOLERANCE:
+	var direction_to_enemy: Vector2 = global_position.direction_to(enemy_position)
+	var desired_position: Vector2 = global_position + direction_to_enemy * minf(move_speed, global_position.distance_to(enemy_position))
+	desired_position = _keep_backline_behind_frontline(desired_position, frontline_center)
+
+	var guard_x: float = _get_backline_guard_x(frontline_center)
+	if absf(global_position.x - guard_x) <= BACKLINE_TOLERANCE:
 		desired_position.x = global_position.x
 
 	return desired_position
 
 
-func _get_formation_position() -> Vector2:
-	if formation_role != FormationRole.BACKLINE:
-		return Vector2.INF
+func _keep_backline_behind_frontline(candidate_position: Vector2, frontline_center: Vector2) -> Vector2:
+	var guard_x: float = _get_backline_guard_x(frontline_center)
 
-	var frontline_center: Vector2 = _get_frontline_center()
-	if frontline_center == Vector2.INF:
-		return Vector2.INF
+	if team_id == 0:
+		candidate_position.x = minf(candidate_position.x, guard_x)
+	else:
+		candidate_position.x = maxf(candidate_position.x, guard_x)
 
+	return candidate_position
+
+
+func _get_backline_guard_x(frontline_center: Vector2) -> float:
 	var rear_direction: float = -1.0 if team_id == 0 else 1.0
-	return Vector2(frontline_center.x + rear_direction * BACKLINE_OFFSET, global_position.y)
+	return frontline_center.x + rear_direction * BACKLINE_OFFSET
 
 
 func _get_frontline_center() -> Vector2:
