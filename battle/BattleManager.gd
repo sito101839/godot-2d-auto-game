@@ -486,10 +486,10 @@ func _add_next_action_panel() -> void:
 	if campaign_completed:
 		label.text = "次: 3年の活動終了。結果タブで通算成績を確認します。"
 	elif current_turn == TURNS_PER_YEAR:
-		label.text = "次: 年末大会に出場。このターンは訓練できません。"
+		label.text = "次: 年末大会に出場。このターンは訓練不可 / 保存: 現在状態を保存"
 	else:
 		var mission: Dictionary = _get_current_mission()
-		label.text = "次: %sへ出発、または訓練で育成。任務選択は編成タブ。" % mission["display_name"]
+		label.text = "次: %sへ出発、または訓練(Gold -10 / 全員EXP +8)。任務選択は編成タブ。" % mission["display_name"]
 	label.custom_minimum_size = Vector2(0.0, 24.0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

@@ -42,8 +42,14 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	if _find_latest_named(priority_rows, "NextActionPanel") == null:
+	var initial_next_action_panel := _find_latest_named(priority_rows, "NextActionPanel")
+	if initial_next_action_panel == null:
 		push_error("Expected NextActionPanel to explain the next action.")
+		_fail(battle)
+		return
+	var initial_next_action_text := _collect_label_text(initial_next_action_panel)
+	if not initial_next_action_text.contains("Gold -10") or not initial_next_action_text.contains("全員EXP"):
+		push_error("Expected next action panel to preview training cost and growth, got: %s" % initial_next_action_text)
 		_fail(battle)
 		return
 
