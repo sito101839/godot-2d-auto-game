@@ -21,6 +21,8 @@ Godot 4.6 の 2D ギルド育成オートバトルプロトタイプです。
 - 年度が進むと在籍年数が増え、長期的には卒業と新人加入が起きます。
 - 年間成績、総戦闘数、大会勝利数を記録します。
 - 3年終了時に通算成績レポートが表示されます。
+- ギルド画面には「次にやること」「任務選択」「直近の結果」が分かれて表示されます。
+- 任務は経験値、Gold、名声、難度を比較して選べます。
 - `user://guild_save.json` に保存/ロードできます。
 - ギルド画面から訓練または戦闘を選び、勝敗後にギルド画面へ戻れます。
 
@@ -47,6 +49,7 @@ godot --headless --path . --script res://scripts/tools/guild_progression_smoke_t
 godot --headless --path . --script res://scripts/tools/guild_year_cycle_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/guild_three_year_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/ui_state_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/ux_flow_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/beta_completion_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/balance_sample_smoke_test.gd
 ```

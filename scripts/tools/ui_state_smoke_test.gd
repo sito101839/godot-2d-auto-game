@@ -24,7 +24,7 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	if start_button.text != "任務開始":
+	if start_button.text != "任務へ出発":
 		push_error("Expected mission start text at year start, got %s." % start_button.text)
 		_fail(battle)
 		return

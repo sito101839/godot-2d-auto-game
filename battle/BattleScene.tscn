@@ -47,10 +47,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = -260.0
-offset_right = 460.0
-offset_bottom = 260.0
+offset_left = -560.0
+offset_top = -320.0
+offset_right = 560.0
+offset_bottom = 320.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 24
@@ -82,7 +82,7 @@ theme_override_constants/separation = 6
 layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 focus_mode = 2
-text = "任務開始"
+text = "任務へ出発"
 
 [node name="ReturnButton" type="Button" parent="UI"]
 visible = false

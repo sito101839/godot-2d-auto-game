@@ -214,7 +214,7 @@ func _show_prep_screen() -> void:
 	_clear_units()
 	_clear_effects()
 	_build_prep_rows()
-	start_button.text = "大会に出場" if current_turn == TURNS_PER_YEAR else "任務開始"
+	start_button.text = "大会に出場" if current_turn == TURNS_PER_YEAR else "任務へ出発"
 	start_button.grab_focus()
 
 
@@ -259,43 +259,20 @@ func _create_guild_member(class_index: int, seed_index: int) -> Dictionary:
 
 func _build_prep_rows() -> void:
 	for child: Node in config_rows.get_children():
-		child.queue_free()
+		child.free()
 
 	unit_buttons.clear()
 	target_buttons.clear()
 	role_buttons.clear()
 	_normalize_selected_members()
 
-	var rank_data: Dictionary = _get_current_rank()
-	_add_title("%s  ランク%s  %d年目 %dターン  名声 %d  所持金 %d" % [
-		guild_name,
-		rank_data["name"],
-		current_year,
-		current_turn,
-		fame,
-		gold,
-	])
-	_add_note("成績: %d年目 %d勝%d敗  通算戦闘 %d  大会優勝 %d  卒業生 %d" % [
-		current_year,
-		current_year_wins,
-		current_year_losses,
-		total_battles,
-		tournament_wins,
-		graduated_count,
-	])
-	if current_turn != TURNS_PER_YEAR:
-		var mission: Dictionary = _get_current_mission()
-		_add_note("現在の任務: %s  経験x%.2f 所持金x%.2f 名声x%.2f" % [
-			mission["display_name"],
-			mission["xp_multiplier"],
-			mission["gold_multiplier"],
-			mission["fame_multiplier"],
-		])
-	_add_note(last_result_summary)
-	if last_year_report != "":
-		_add_note(last_year_report)
-	if final_report != "":
-		_add_note(final_report)
+	_add_status_panel()
+	_add_next_action_panel()
+	if last_result_summary != "":
+		_add_result_panel()
+	if current_turn != TURNS_PER_YEAR and not campaign_completed:
+		_add_mission_selection_panel()
+
 	_add_section_header("出撃メンバー")
 	for slot_index: int in MAX_ACTIVE_MEMBERS:
 		_add_party_row(slot_index)
@@ -306,6 +283,74 @@ func _build_prep_rows() -> void:
 
 	_add_section_header("ギルド活動")
 	_add_action_row()
+
+
+func _add_status_panel() -> void:
+	var rank_data: Dictionary = _get_current_rank()
+	_add_panel("ギルド状況", [
+		"%s  ランク%s  %d年目 %dターン  名声 %d  所持金 %d" % [
+			guild_name,
+			rank_data["name"],
+			current_year,
+			current_turn,
+			fame,
+			gold,
+		],
+		"今年: %d勝%d敗  通算戦闘 %d  大会優勝 %d  卒業生 %d" % [
+			current_year_wins,
+			current_year_losses,
+			total_battles,
+			tournament_wins,
+			graduated_count,
+		],
+	], "StatusPanel")
+
+
+func _add_next_action_panel() -> void:
+	var lines: Array[String] = []
+	if campaign_completed:
+		lines.append("3年の活動が終了しました。通算成績を確認し、次の改善方針を考える段階です。")
+	elif current_turn == TURNS_PER_YEAR:
+		lines.append("次の行動: 年末大会に出場")
+		lines.append("このターンは訓練できません。編成と作戦を確認して大会へ進みます。")
+	else:
+		var mission: Dictionary = _get_current_mission()
+		lines.append("次の行動: %sに出発、または訓練で1ターン育成" % mission["display_name"])
+		lines.append("任務は経験/所持金/名声の伸びが違います。目的に合わせて下の任務を選びます。")
+	_add_panel("次にやること", lines, "NextActionPanel")
+
+
+func _add_result_panel() -> void:
+	var lines: Array[String] = [last_result_summary]
+	if last_year_report != "":
+		lines.append(last_year_report)
+	if final_report != "":
+		lines.append(final_report)
+	_add_panel("直近の結果", lines, "ResultPanel")
+
+
+func _add_mission_selection_panel() -> void:
+	var panel := _create_panel("任務選択", "MissionSelectionPanel")
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var hint := Label.new()
+	hint.text = "伸ばしたい報酬を選んでから「任務へ出発」を押します。"
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(hint)
+
+	var row := HBoxContainer.new()
+	row.name = "MissionButtons"
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(row)
+
+	for index: int in MISSION_DEFINITIONS.size():
+		var mission: Dictionary = MISSION_DEFINITIONS[index]
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(190.0, 72.0)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_ALL
+		button.text = _get_mission_button_text(index, mission)
+		button.pressed.connect(_select_mission.bind(index))
+		row.add_child(button)
 
 
 func _add_title(text: String) -> void:
@@ -328,6 +373,43 @@ func _add_section_header(text: String) -> void:
 	label.text = text
 	label.add_theme_font_size_override("font_size", 18)
 	config_rows.add_child(label)
+
+
+func _create_panel(title: String, panel_name: String) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = panel_name
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	config_rows.add_child(panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	panel.add_child(margin)
+
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 5)
+	margin.add_child(content)
+
+	var heading := Label.new()
+	heading.text = title
+	heading.add_theme_font_size_override("font_size", 17)
+	content.add_child(heading)
+	return panel
+
+
+func _add_panel(title: String, lines: Array[String], panel_name: String) -> void:
+	var panel := _create_panel(title, panel_name)
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	for line: String in lines:
+		var label := Label.new()
+		label.text = line
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		content.add_child(label)
 
 
 func _add_party_row(slot_index: int) -> void:
@@ -388,9 +470,10 @@ func _add_member_summary(member_index: int) -> void:
 
 
 func _add_action_row() -> void:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0.0, 42.0)
-	config_rows.add_child(row)
+	var training_row := HBoxContainer.new()
+	training_row.name = "TrainingActionsRow"
+	training_row.custom_minimum_size = Vector2(0.0, 42.0)
+	config_rows.add_child(training_row)
 	var tournament_turn: bool = current_turn == TURNS_PER_YEAR
 
 	var drill_button := Button.new()
@@ -399,7 +482,7 @@ func _add_action_row() -> void:
 	drill_button.focus_mode = Control.FOCUS_ALL
 	drill_button.disabled = tournament_turn
 	drill_button.pressed.connect(_train_guild.bind("drill"))
-	row.add_child(drill_button)
+	training_row.add_child(drill_button)
 
 	var endurance_button := Button.new()
 	endurance_button.text = "耐久訓練"
@@ -407,7 +490,7 @@ func _add_action_row() -> void:
 	endurance_button.focus_mode = Control.FOCUS_ALL
 	endurance_button.disabled = tournament_turn
 	endurance_button.pressed.connect(_train_guild.bind("endurance"))
-	row.add_child(endurance_button)
+	training_row.add_child(endurance_button)
 
 	var tactics_button := Button.new()
 	tactics_button.text = "戦術訓練"
@@ -415,29 +498,25 @@ func _add_action_row() -> void:
 	tactics_button.focus_mode = Control.FOCUS_ALL
 	tactics_button.disabled = tournament_turn
 	tactics_button.pressed.connect(_train_guild.bind("tactics"))
-	row.add_child(tactics_button)
+	training_row.add_child(tactics_button)
 
-	var mission_button := Button.new()
-	mission_button.text = "任務: %s" % _get_current_mission()["display_name"]
-	mission_button.custom_minimum_size = Vector2(170.0, 0.0)
-	mission_button.focus_mode = Control.FOCUS_ALL
-	mission_button.disabled = tournament_turn
-	mission_button.pressed.connect(_cycle_mission)
-	row.add_child(mission_button)
-
+	var save_row := HBoxContainer.new()
+	save_row.name = "SaveActionsRow"
+	save_row.custom_minimum_size = Vector2(0.0, 42.0)
+	config_rows.add_child(save_row)
 	var save_button := Button.new()
 	save_button.text = "保存"
 	save_button.custom_minimum_size = Vector2(110.0, 0.0)
 	save_button.focus_mode = Control.FOCUS_ALL
 	save_button.pressed.connect(save_game)
-	row.add_child(save_button)
+	save_row.add_child(save_button)
 
 	var load_button := Button.new()
 	load_button.text = "読込"
 	load_button.custom_minimum_size = Vector2(110.0, 0.0)
 	load_button.focus_mode = Control.FOCUS_ALL
 	load_button.pressed.connect(load_game)
-	row.add_child(load_button)
+	save_row.add_child(load_button)
 
 
 func _refresh_party_row(slot_index: int) -> void:
@@ -483,6 +562,24 @@ func _cycle_role_choice(slot_index: int) -> void:
 func _cycle_mission() -> void:
 	current_mission_index = (current_mission_index + 1) % MISSION_DEFINITIONS.size()
 	_build_prep_rows()
+
+
+func _select_mission(mission_index: int) -> void:
+	current_mission_index = clampi(mission_index, 0, MISSION_DEFINITIONS.size() - 1)
+	_build_prep_rows()
+
+
+func _get_mission_button_text(mission_index: int, mission: Dictionary) -> String:
+	var marker: String = "選択中" if mission_index == current_mission_index else "選択"
+	var danger: String = "標準" if int(mission["enemy_bonus"]) <= 0 else "高め"
+	return "%s: %s\n経験 x%.2f / Gold x%.2f / 名声 x%.2f\n難度: %s" % [
+		marker,
+		mission["display_name"],
+		mission["xp_multiplier"],
+		mission["gold_multiplier"],
+		mission["fame_multiplier"],
+		danger,
+	]
 
 
 func _train_guild(training_type: String) -> void:
