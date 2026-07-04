@@ -47,6 +47,12 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	var guide_panel := _find_latest_named(priority_rows, "FirstRunGuidePanel")
+	if guide_panel == null or not _collect_label_text(guide_panel).contains("基本の流れ"):
+		push_error("Expected first-run guide to explain the basic flow.")
+		_fail(battle)
+		return
+
 	var action_panel := _find_latest_named(priority_rows, "ActionPanel")
 	if action_panel == null:
 		push_error("Expected ActionPanel to group player actions.")
@@ -144,6 +150,21 @@ func _run() -> void:
 
 	if disabled_training_buttons != 3:
 		push_error("Expected 3 disabled training buttons on tournament turn, got %d." % disabled_training_buttons)
+		_fail(battle)
+		return
+
+	manager.set("campaign_completed", true)
+	manager.set("final_report", "3年終了レポート: テスト")
+	manager.call("_show_prep_screen")
+	await process_frame
+	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	var completed_button := _find_latest_named(priority_rows, "PrimaryActionButton") as Button
+	if completed_button == null or completed_button.text != "3年終了" or not completed_button.disabled:
+		push_error("Expected completed campaign to disable the primary action.")
+		_fail(battle)
+		return
+	if _find_latest_named(priority_rows, "MilestonePanel") == null:
+		push_error("Expected milestone panel after campaign completion.")
 		_fail(battle)
 		return
 

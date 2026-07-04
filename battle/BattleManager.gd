@@ -170,7 +170,7 @@ func _process(_delta: float) -> void:
 
 
 func start_battle() -> void:
-	if guild_members.is_empty():
+	if guild_members.is_empty() or campaign_completed:
 		return
 
 	current_battle_kind = "tournament" if current_turn == TURNS_PER_YEAR else "mission"
@@ -273,7 +273,11 @@ func _build_prep_rows() -> void:
 	_normalize_selected_members()
 
 	_add_status_panel()
+	if _should_show_first_run_guide():
+		_add_first_run_guide_panel()
 	_add_next_action_panel()
+	if last_year_report != "" or final_report != "":
+		_add_milestone_panel()
 	if last_result_summary != "":
 		_add_result_panel()
 	if current_turn != TURNS_PER_YEAR and not campaign_completed:
@@ -313,6 +317,18 @@ func _add_status_panel() -> void:
 	], "StatusPanel", priority_rows)
 
 
+func _should_show_first_run_guide() -> bool:
+	return total_battles == 0 and completed_years == 0 and current_year == 1 and current_turn == 1
+
+
+func _add_first_run_guide_panel() -> void:
+	_add_panel("はじめに", [
+		"このゲームは、ギルドメンバーを育成して任務や大会に送り出すオートバトル育成ゲームです。",
+		"基本の流れ: 1. 任務を選ぶ  2. 出撃メンバーと作戦を見る  3. 訓練または任務へ出発  4. 結果を見て次のターンへ進む",
+		"1年は4ターンです。4ターン目は年末大会になり、訓練ではなく大会へ出場します。",
+	], "FirstRunGuidePanel", priority_rows)
+
+
 func _add_next_action_panel() -> void:
 	var lines: Array[String] = []
 	if campaign_completed:
@@ -327,13 +343,18 @@ func _add_next_action_panel() -> void:
 	_add_panel("次にやること", lines, "NextActionPanel", priority_rows)
 
 
-func _add_result_panel() -> void:
-	var lines: Array[String] = [last_result_summary]
-	lines.append_array(last_result_details)
+func _add_milestone_panel() -> void:
+	var lines: Array[String] = []
 	if last_year_report != "":
 		lines.append(last_year_report)
 	if final_report != "":
 		lines.append(final_report)
+	_add_panel("節目レポート", lines, "MilestonePanel", priority_rows)
+
+
+func _add_result_panel() -> void:
+	var lines: Array[String] = [last_result_summary]
+	lines.append_array(last_result_details)
 	_add_panel("直近の結果", lines, "ResultPanel", priority_rows)
 
 
@@ -504,10 +525,11 @@ func _add_action_row() -> void:
 
 	primary_action_button = Button.new()
 	primary_action_button.name = "PrimaryActionButton"
-	primary_action_button.text = "大会に出場" if tournament_turn else "任務へ出発"
+	primary_action_button.text = _get_primary_action_text()
 	primary_action_button.custom_minimum_size = Vector2(260.0, 48.0)
 	primary_action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	primary_action_button.focus_mode = Control.FOCUS_ALL
+	primary_action_button.disabled = campaign_completed
 	primary_action_button.pressed.connect(start_battle)
 	primary_row.add_child(primary_action_button)
 
@@ -515,7 +537,7 @@ func _add_action_row() -> void:
 	primary_hint.custom_minimum_size = Vector2(420.0, 0.0)
 	primary_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	primary_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	primary_hint.text = "編成と作戦を確認して年末大会へ進みます。" if tournament_turn else "%sへ出発します。迷ったらまずここを押せばゲームが進みます。" % _get_current_mission()["display_name"]
+	primary_hint.text = _get_primary_action_hint(tournament_turn)
 	primary_row.add_child(primary_hint)
 
 	var training_label := Label.new()
@@ -572,6 +594,20 @@ func _add_action_row() -> void:
 	load_button.focus_mode = Control.FOCUS_ALL
 	load_button.pressed.connect(load_game)
 	save_row.add_child(load_button)
+
+
+func _get_primary_action_text() -> String:
+	if campaign_completed:
+		return "3年終了"
+	return "大会に出場" if current_turn == TURNS_PER_YEAR else "任務へ出発"
+
+
+func _get_primary_action_hint(tournament_turn: bool) -> String:
+	if campaign_completed:
+		return "β版の3年サイクルは完了です。節目レポートでギルドの成果を確認できます。"
+	if tournament_turn:
+		return "編成と作戦を確認して年末大会へ進みます。"
+	return "%sへ出発します。迷ったらまずここを押せばゲームが進みます。" % _get_current_mission()["display_name"]
 
 
 func _refresh_party_row(slot_index: int) -> void:
