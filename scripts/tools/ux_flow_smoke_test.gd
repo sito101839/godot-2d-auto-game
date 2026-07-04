@@ -47,7 +47,7 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	var guide_panel := _find_latest_named(priority_rows, "FirstRunGuidePanel")
+	var guide_panel := _find_latest_named(config_rows, "FirstRunGuidePanel")
 	if guide_panel == null or not _collect_label_text(guide_panel).contains("基本の流れ"):
 		push_error("Expected first-run guide to explain the basic flow.")
 		_fail(battle)
@@ -75,9 +75,17 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	var mission_panel := _find_latest_named(priority_rows, "MissionSelectionPanel")
+	if _find_latest_named(priority_rows, "ViewTabs") == null:
+		push_error("Expected view tabs for screen navigation.")
+		_fail(battle)
+		return
+
+	manager.call("_set_current_view", "formation")
+	await process_frame
+	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
+	var mission_panel := _find_latest_named(config_rows, "MissionSelectionPanel")
 	if mission_panel == null:
-		push_error("Expected MissionSelectionPanel on mission turns.")
+		push_error("Expected MissionSelectionPanel on formation view.")
 		_fail(battle)
 		return
 
@@ -92,6 +100,9 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	manager.call("_set_current_view", "roster")
+	await process_frame
+	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
 	var initial_text := _collect_label_text(config_rows)
 	if not initial_text.contains("出撃中:") or not initial_text.contains("役割目安:"):
 		if _find_latest_named(config_rows, "MemberSummaryTable") == null or not initial_text.contains("役割目安"):
@@ -103,6 +114,8 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	manager.call("_set_current_view", "formation")
+	await process_frame
 	manager.call("_select_mission", 1)
 	await process_frame
 	if int(manager.get("current_mission_index")) != 1:
@@ -121,7 +134,8 @@ func _run() -> void:
 	manager.call("_train_guild", "drill")
 	await process_frame
 	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
-	var result_panel := _find_latest_named(priority_rows, "ResultPanel")
+	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
+	var result_panel := _find_latest_named(config_rows, "ResultPanel")
 	var result_text := _collect_label_text(result_panel)
 	if not result_text.contains("Gold -10") or not result_text.contains("次のターン"):
 		push_error("Expected result panel to show structured training details, got: %s" % result_text)
@@ -143,7 +157,7 @@ func _run() -> void:
 
 	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
 	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
-	if _find_latest_named(priority_rows, "MissionSelectionPanel") != null:
+	if _find_latest_named(config_rows, "MissionSelectionPanel") != null or _find_latest_named(priority_rows, "MissionSelectionPanel") != null:
 		push_error("Mission selection should be hidden on tournament turns.")
 		_fail(battle)
 		return
@@ -163,12 +177,13 @@ func _run() -> void:
 	manager.call("_show_prep_screen")
 	await process_frame
 	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
 	var completed_button := _find_latest_named(priority_rows, "PrimaryActionButton") as Button
 	if completed_button == null or completed_button.text != "3年終了" or not completed_button.disabled:
 		push_error("Expected completed campaign to disable the primary action.")
 		_fail(battle)
 		return
-	if _find_latest_named(priority_rows, "MilestonePanel") == null:
+	if _find_latest_named(config_rows, "MilestonePanel") == null:
 		push_error("Expected milestone panel after campaign completion.")
 		_fail(battle)
 		return

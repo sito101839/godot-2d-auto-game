@@ -98,6 +98,13 @@ const GUILD_RANKS: Array[Dictionary] = [
 	{"name": "A", "threshold": 300, "recruit_bonus": 4, "enemy_bonus": 2},
 ]
 
+const VIEW_DEFINITIONS: Array[Dictionary] = [
+	{"name": "overview", "display_name": "概要"},
+	{"name": "formation", "display_name": "編成"},
+	{"name": "roster", "display_name": "所属"},
+	{"name": "reports", "display_name": "結果"},
+]
+
 const MEMBER_NAMES: Array[String] = [
 	"アルマ",
 	"ブラム",
@@ -146,9 +153,11 @@ var campaign_completed: bool = false
 var save_path: String = SAVE_PATH
 var guild_members: Array[Dictionary] = []
 var selected_member_indices: Array[int] = [0, 1, 2]
+var current_view: String = "overview"
 var unit_buttons: Array[Button] = []
 var target_buttons: Array[Button] = []
 var role_buttons: Array[Button] = []
+var view_buttons: Array[Button] = []
 var primary_action_button: Button = null
 var combat_stats: Dictionary = {}
 var current_participant_indices: Array[int] = []
@@ -269,28 +278,16 @@ func _build_prep_rows() -> void:
 	unit_buttons.clear()
 	target_buttons.clear()
 	role_buttons.clear()
+	view_buttons.clear()
 	primary_action_button = null
 	_normalize_selected_members()
+	_normalize_current_view()
 
 	_add_status_panel()
-	if _should_show_first_run_guide():
-		_add_first_run_guide_panel()
 	_add_next_action_panel()
-	if last_year_report != "" or final_report != "":
-		_add_milestone_panel()
-	if last_result_summary != "":
-		_add_result_panel()
-	if current_turn != TURNS_PER_YEAR and not campaign_completed:
-		_add_mission_selection_panel()
-
-	_add_section_header("出撃メンバー")
-	for slot_index: int in MAX_ACTIVE_MEMBERS:
-		_add_party_row(slot_index)
-
-	_add_section_header("所属メンバー")
-	_add_member_summary_table()
-
 	_add_action_row()
+	_add_view_tabs()
+	_add_current_view_content()
 	if primary_action_button != null:
 		primary_action_button.grab_focus()
 
@@ -316,6 +313,82 @@ func _add_status_panel() -> void:
 	], "StatusPanel", priority_rows)
 
 
+func _normalize_current_view() -> void:
+	for view: Dictionary in VIEW_DEFINITIONS:
+		if current_view == str(view["name"]):
+			return
+	current_view = "overview"
+
+
+func _add_view_tabs() -> void:
+	var row := HBoxContainer.new()
+	row.name = "ViewTabs"
+	row.custom_minimum_size = Vector2(0.0, 38.0)
+	priority_rows.add_child(row)
+
+	for view: Dictionary in VIEW_DEFINITIONS:
+		var button := Button.new()
+		button.name = "ViewTab_%s" % view["name"]
+		button.custom_minimum_size = Vector2(120.0, 34.0)
+		button.focus_mode = Control.FOCUS_ALL
+		button.text = "■ %s" % view["display_name"] if current_view == str(view["name"]) else str(view["display_name"])
+		button.pressed.connect(_set_current_view.bind(str(view["name"])))
+		row.add_child(button)
+		view_buttons.append(button)
+
+
+func _set_current_view(view_name: String) -> void:
+	current_view = view_name
+	_build_prep_rows()
+
+
+func _add_current_view_content() -> void:
+	match current_view:
+		"formation":
+			_add_formation_view()
+		"roster":
+			_add_roster_view()
+		"reports":
+			_add_reports_view()
+		_:
+			_add_overview_view()
+
+
+func _add_overview_view() -> void:
+	if _should_show_first_run_guide():
+		_add_first_run_guide_panel()
+	else:
+		_add_panel("概要", [
+			"上部の主行動でゲームを進めます。詳しく調整したい時は、編成・所属・結果タブを切り替えます。",
+			"編成: 出撃メンバー、作戦、任務を決めます。所属: メンバー能力を比較します。結果: 直近結果と節目レポートを確認します。",
+		], "OverviewPanel")
+
+
+func _add_formation_view() -> void:
+	if current_turn != TURNS_PER_YEAR and not campaign_completed:
+		_add_mission_selection_panel()
+	_add_section_header("出撃メンバー")
+	for slot_index: int in MAX_ACTIVE_MEMBERS:
+		_add_party_row(slot_index)
+
+
+func _add_roster_view() -> void:
+	_add_section_header("所属メンバー")
+	_add_member_summary_table()
+
+
+func _add_reports_view() -> void:
+	var has_report: bool = false
+	if last_year_report != "" or final_report != "":
+		_add_milestone_panel()
+		has_report = true
+	if last_result_summary != "":
+		_add_result_panel()
+		has_report = true
+	if not has_report:
+		_add_panel("結果", ["まだ結果はありません。任務、訓練、大会の後にここへ記録されます。"], "EmptyReportPanel")
+
+
 func _should_show_first_run_guide() -> bool:
 	return total_battles == 0 and completed_years == 0 and current_year == 1 and current_turn == 1
 
@@ -325,7 +398,7 @@ func _add_first_run_guide_panel() -> void:
 		"このゲームは、ギルドメンバーを育成して任務や大会に送り出すオートバトル育成ゲームです。",
 		"基本の流れ: 1. 任務を選ぶ  2. 出撃メンバーと作戦を見る  3. 訓練または任務へ出発  4. 結果を見て次のターンへ進む",
 		"1年は4ターンです。4ターン目は年末大会になり、訓練ではなく大会へ出場します。",
-	], "FirstRunGuidePanel", priority_rows)
+	], "FirstRunGuidePanel")
 
 
 func _add_next_action_panel() -> void:
@@ -348,17 +421,17 @@ func _add_milestone_panel() -> void:
 		lines.append(last_year_report)
 	if final_report != "":
 		lines.append(final_report)
-	_add_panel("節目レポート", lines, "MilestonePanel", priority_rows)
+	_add_panel("節目レポート", lines, "MilestonePanel")
 
 
 func _add_result_panel() -> void:
 	var lines: Array[String] = [last_result_summary]
 	lines.append_array(last_result_details)
-	_add_panel("直近の結果", lines, "ResultPanel", priority_rows)
+	_add_panel("直近の結果", lines, "ResultPanel")
 
 
 func _add_mission_selection_panel() -> void:
-	var panel := _create_panel("任務選択", "MissionSelectionPanel", priority_rows)
+	var panel := _create_panel("任務選択", "MissionSelectionPanel")
 	var content := panel.find_child("Content", true, false) as VBoxContainer
 	var hint := Label.new()
 	hint.text = "伸ばしたい報酬を選んでから「任務へ出発」を押します。"
@@ -682,28 +755,33 @@ func _cycle_selected_member(slot_index: int) -> void:
 			selected_member_indices[slot_index] = next_index
 			break
 
+	current_view = "formation"
 	_build_prep_rows()
 
 
 func _cycle_target_choice(slot_index: int) -> void:
 	var member: Dictionary = guild_members[selected_member_indices[slot_index]]
 	member["target_policy"] = (int(member["target_policy"]) + 1) % TARGET_POLICIES.size()
+	current_view = "formation"
 	_build_prep_rows()
 
 
 func _cycle_role_choice(slot_index: int) -> void:
 	var member: Dictionary = guild_members[selected_member_indices[slot_index]]
 	member["formation_role"] = (int(member["formation_role"]) + 1) % FORMATION_ROLES.size()
+	current_view = "formation"
 	_build_prep_rows()
 
 
 func _cycle_mission() -> void:
 	current_mission_index = (current_mission_index + 1) % MISSION_DEFINITIONS.size()
+	current_view = "formation"
 	_build_prep_rows()
 
 
 func _select_mission(mission_index: int) -> void:
 	current_mission_index = clampi(mission_index, 0, MISSION_DEFINITIONS.size() - 1)
+	current_view = "formation"
 	_build_prep_rows()
 
 
@@ -741,6 +819,7 @@ func _train_guild(training_type: String) -> void:
 		"Gold -10 / 全員 経験 +8",
 		"次のターンへ進みました。大会ターンでは訓練できません。",
 	]
+	current_view = "reports"
 	_advance_calendar()
 	_show_prep_screen()
 
@@ -1034,6 +1113,7 @@ func _apply_battle_rewards(blue_won: bool) -> void:
 		rank_text,
 	]
 	last_result_details = battle_report_lines.duplicate()
+	current_view = "reports"
 	_advance_calendar()
 
 
@@ -1212,11 +1292,13 @@ func save_game() -> void:
 		push_error(result["error"])
 		last_result_summary = "保存に失敗しました。"
 		last_result_details = [str(result["error"])]
+		current_view = "reports"
 		_show_prep_screen()
 		return
 
 	last_result_summary = "ギルドを保存しました。"
 	last_result_details = ["保存先: %s" % save_path]
+	current_view = "reports"
 	_show_prep_screen()
 
 
@@ -1227,12 +1309,14 @@ func load_game() -> void:
 			push_error(result["error"])
 		last_result_summary = "セーブデータがありません。" if str(result["error"]) == "No save file found." else "読込に失敗しました。"
 		last_result_details = [str(result["error"])]
+		current_view = "reports"
 		_show_prep_screen()
 		return
 
 	_apply_save_data(result["data"])
 	last_result_summary = "ギルドを読み込みました。"
 	last_result_details = ["保存時点のギルド状況を復元しました。"]
+	current_view = "reports"
 	_show_prep_screen()
 
 
