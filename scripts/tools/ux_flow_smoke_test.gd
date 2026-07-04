@@ -148,6 +148,12 @@ func _run() -> void:
 		push_error("Expected result panel to show structured training details, got: %s" % result_text)
 		_fail(battle)
 		return
+	var result_digest_panel := _find_latest_named(config_rows, "ResultDigestPanel")
+	var result_digest_text := _collect_label_text(result_digest_panel)
+	if result_digest_panel == null or not result_digest_text.contains("報酬") or not result_digest_text.contains("成長"):
+		push_error("Expected result digest to summarize rewards and growth, got: %s" % result_digest_text)
+		_fail(battle)
+		return
 
 	manager.call("_train_guild", "endurance")
 	await process_frame

@@ -471,9 +471,113 @@ func _add_milestone_panel() -> void:
 
 
 func _add_result_panel() -> void:
+	_add_result_digest_panel()
 	var lines: Array[String] = [last_result_summary]
 	lines.append_array(last_result_details)
 	_add_panel("直近の結果", lines, "ResultPanel")
+
+
+func _add_result_digest_panel() -> void:
+	var panel := _create_panel("結果サマリー", "ResultDigestPanel")
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var grid := GridContainer.new()
+	grid.name = "ResultDigestGrid"
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	content.add_child(grid)
+
+	for card_data: Dictionary in _build_result_digest_cards():
+		_add_summary_card(grid, str(card_data["title"]), str(card_data["value"]))
+
+
+func _build_result_digest_cards() -> Array[Dictionary]:
+	var cards: Array[Dictionary] = []
+	cards.append({"title": "結果", "value": _get_result_outcome_text()})
+	cards.append({"title": "報酬/コスト", "value": _get_result_reward_text()})
+	cards.append({"title": "成長", "value": _get_result_growth_text()})
+	cards.append({"title": "次", "value": _get_result_next_text()})
+	return cards
+
+
+func _get_result_outcome_text() -> String:
+	if last_result_summary.contains("MVP"):
+		return _shorten_result_segment(last_result_summary, 2)
+	return last_result_summary
+
+
+func _get_result_reward_text() -> String:
+	for detail: String in last_result_details:
+		if detail.contains("Gold"):
+			return detail.split("/")[0].strip_edges()
+	if last_result_summary.contains("名声") or last_result_summary.contains("Gold"):
+		var segments := last_result_summary.split("/")
+		var reward_segments: Array[String] = []
+		for segment: String in segments:
+			var trimmed: String = segment.strip_edges()
+			if trimmed.contains("名声") or trimmed.contains("Gold") or trimmed.contains("ランク"):
+				reward_segments.append(trimmed)
+		if not reward_segments.is_empty():
+			return " / ".join(reward_segments)
+	return "変化なし"
+
+
+func _get_result_growth_text() -> String:
+	for detail: String in last_result_details:
+		if detail.contains("全員") and detail.contains("経験"):
+			return detail.split("/")[1].strip_edges() if detail.contains("/") else detail
+
+	var member_count: int = 0
+	var level_up_count: int = 0
+	for detail: String in last_result_details:
+		if detail.contains("経験+"):
+			member_count += 1
+			if _detail_has_level_up(detail):
+				level_up_count += 1
+	if member_count > 0:
+		return "出撃%d人 / LvUP %d人" % [member_count, level_up_count]
+	return "記録なし"
+
+
+func _get_result_next_text() -> String:
+	for detail: String in last_result_details:
+		if detail.contains("次"):
+			return detail
+	if campaign_completed:
+		return "3年終了。節目レポートを確認。"
+	if current_turn == TURNS_PER_YEAR:
+		return "年末大会に出場。"
+	return "編成を確認して次の行動へ。"
+
+
+func _shorten_result_segment(text: String, segment_count: int) -> String:
+	var segments := text.split("/")
+	var kept: Array[String] = []
+	for index: int in min(segment_count, segments.size()):
+		kept.append(str(segments[index]).strip_edges())
+	return " / ".join(kept)
+
+
+func _detail_has_level_up(detail: String) -> bool:
+	var marker: int = detail.find("Lv")
+	if marker == -1:
+		return false
+	var arrow: int = detail.find("→", marker)
+	if arrow == -1:
+		return false
+	var before_text: String = detail.substr(marker + 2, arrow - marker - 2).strip_edges()
+	var after_text := ""
+	var cursor: int = arrow + 1
+	while cursor < detail.length():
+		var character: String = detail.substr(cursor, 1)
+		if not character.is_valid_int():
+			break
+		after_text += character
+		cursor += 1
+	if before_text.is_valid_int() and after_text.is_valid_int():
+		return int(after_text) > int(before_text)
+	return false
 
 
 func _add_mission_selection_panel() -> void:
