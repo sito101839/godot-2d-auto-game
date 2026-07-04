@@ -445,7 +445,7 @@ func _add_year_progress_panel() -> void:
 func _add_formation_view() -> void:
 	if current_turn != TURNS_PER_YEAR and not campaign_completed:
 		_add_mission_selection_panel()
-	_add_section_header("出撃メンバー")
+	_add_section_header("出撃メンバー（狙い=攻撃優先 / 役割=動き方）")
 	for slot_index: int in MAX_ACTIVE_MEMBERS:
 		_add_party_row(slot_index)
 	_add_selected_member_preview_panel()

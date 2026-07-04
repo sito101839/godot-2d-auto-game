@@ -105,6 +105,11 @@ func _run() -> void:
 	manager.call("_set_current_view", "formation")
 	await process_frame
 	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
+	var formation_text := _collect_label_text(config_rows)
+	if not formation_text.contains("狙い=攻撃優先") or not formation_text.contains("役割=動き方"):
+		push_error("Expected formation view to explain target and role controls, got: %s" % formation_text)
+		_fail(battle)
+		return
 	var mission_panel := _find_latest_named(config_rows, "MissionSelectionPanel")
 	if mission_panel == null:
 		push_error("Expected MissionSelectionPanel on formation view.")
