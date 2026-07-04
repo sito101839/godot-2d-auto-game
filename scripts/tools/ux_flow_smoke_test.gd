@@ -165,7 +165,12 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	manager.call("_train_guild", "drill")
+	var drill_button := _find_button_by_text(prep_content, "攻撃訓練")
+	if drill_button == null:
+		push_error("Expected drill training button for signal regression check.")
+		_fail(battle)
+		return
+	drill_button.emit_signal("pressed")
 	await process_frame
 	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
 	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
@@ -241,6 +246,13 @@ func _collect_buttons(node: Node) -> Array[Button]:
 	for child: Node in node.get_children():
 		buttons.append_array(_collect_buttons(child))
 	return buttons
+
+
+func _find_button_by_text(node: Node, text: String) -> Button:
+	for button: Button in _collect_buttons(node):
+		if button.text == text:
+			return button
+	return null
 
 
 func _find_latest_named(node: Node, target_name: String) -> Node:

@@ -283,9 +283,11 @@ func _create_guild_member(class_index: int, seed_index: int) -> Dictionary:
 
 func _build_prep_rows() -> void:
 	for child: Node in priority_rows.get_children():
-		child.free()
+		priority_rows.remove_child(child)
+		child.queue_free()
 	for child: Node in config_rows.get_children():
-		child.free()
+		config_rows.remove_child(child)
+		child.queue_free()
 
 	unit_buttons.clear()
 	target_buttons.clear()
