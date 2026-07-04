@@ -15,6 +15,7 @@ Use this skill for long-running implementation work in `godot-2d-auto-game`, esp
 4. Use `scripts/tools/run_quality_checks.ps1 -IncludeBalance` when battle tuning, enemy scaling, class stats, target selection, or formation behavior changed.
 5. Treat `SMOKE_TEST_PASS ...` as the success source, not Godot's exit code alone.
 6. Update `docs/checklists/beta-quality-checklist.md` when β scope changes or a checklist item becomes proven.
+7. For GUI layout or UX quality work, capture Viewport screenshots in normal GUI mode and inspect the PNGs before claiming visual quality.
 
 ## Branch And Commit Workflow
 
@@ -32,9 +33,30 @@ godot --headless --path . --quit
 .\scripts\tools\run_smoke_tests.ps1
 .\scripts\tools\run_quality_checks.ps1
 .\scripts\tools\run_quality_checks.ps1 -IncludeBalance
+godot --path . --script res://scripts/tools/capture_guild_hall_screenshot.gd
 ```
 
 The runner writes logs under `.godot/smoke_test_logs/`.
+The screenshot capture tool writes GUI-rendered PNGs under `.godot/screenshots/`.
+
+## GUI Screenshot Review
+
+Use this for screen layout, visual density, clipping, readability, and UX quality checks:
+
+```powershell
+godot --path . --script res://scripts/tools/capture_guild_hall_screenshot.gd
+```
+
+Important details:
+
+- Run it in normal GUI mode. `--headless` uses a dummy renderer and cannot reliably provide Viewport textures.
+- Inspect the generated files with `view_image`, especially:
+  - `.godot/screenshots/guild_hall_overview.png`
+  - `.godot/screenshots/guild_hall_formation.png`
+  - `.godot/screenshots/guild_hall_roster.png`
+  - `.godot/screenshots/guild_hall_reports.png`
+- Do not call UI quality complete from parse checks or label-state smoke tests alone when the user is concerned about real screen appearance.
+- If a screenshot shows clipping, cramped layout, text overflow, or important actions below the visible area, fix the layout and capture screenshots again.
 
 ## Smoke Test Map
 
@@ -45,6 +67,8 @@ The runner writes logs under `.godot/smoke_test_logs/`.
 - `guild_year_cycle_smoke_test.gd`: one-year cycle and save/load.
 - `guild_three_year_smoke_test.gd`: three-year β cycle, graduation, recruits, save/load.
 - `ui_state_smoke_test.gd`: Japanese UI state and tournament training lockout.
+- `ux_flow_smoke_test.gd`: guild hall screen flow, tabs, action grouping, and UX structure.
+- `capture_guild_hall_screenshot.gd`: GUI-mode Viewport PNG capture for visual review.
 - `balance_sample_smoke_test.gd`: optional sample battle distribution and finish-time check.
 
 ## Debugging Rules
@@ -60,6 +84,7 @@ For implementation tasks touching gameplay, progression, UI, save/load, or battl
 
 - `godot --headless --path . --quit` passes.
 - Relevant targeted smoke tests pass.
+- GUI screenshots have been captured and inspected when the task touches screen layout, density, readability, or visual UX.
 - `.\scripts\tools\run_quality_checks.ps1` passes.
 - `git diff --check` passes.
 - README/docs/checklists are updated when commands or user-visible behavior changed.

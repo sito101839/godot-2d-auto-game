@@ -7,6 +7,7 @@ These rules apply to work in this repository.
 - Run `godot --headless --path . --quit` after Godot script or scene changes.
 - Run `.\scripts\tools\run_quality_checks.ps1` before calling broad gameplay, progression, UI, or save/load work complete.
 - Run `.\scripts\tools\run_quality_checks.ps1 -IncludeBalance` when changing battle stats, class stats, target selection, movement, formations, enemy scaling, or attack effects.
+- For UI layout/readability/visual UX changes, run `godot --path . --script res://scripts/tools/capture_guild_hall_screenshot.gd` in normal GUI mode and inspect the generated PNGs under `.godot/screenshots/`.
 - Run `git diff --check` before final reporting.
 
 ## Evidence Rules
@@ -16,6 +17,7 @@ These rules apply to work in this repository.
 - Do not claim β-cycle completion without `SMOKE_TEST_PASS guild_three_year_cycle`.
 - Do not claim save/load completion without a smoke test that mutates state after save and proves load restores it.
 - Do not claim UI completion when only code parses; verify UI state with a smoke test when button state, labels, or screen flow changed.
+- Do not claim visual UI quality when only headless checks pass; use GUI-mode Viewport screenshots for clipping, density, and readability.
 
 ## Documentation Rules
 

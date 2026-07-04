@@ -32,6 +32,8 @@
 ## 検証
 
 - [x] `ux_flow_smoke_test.gd` がある。
+- [x] GUIモードのViewportスクリーンショット取得手順がある。
+- [x] `.godot/screenshots/` の画像を確認して見切れや圧迫感を評価できる。
 - [x] `godot --headless --path . --script res://scripts/tools/ux_flow_smoke_test.gd`
 - [x] `.\scripts\tools\run_quality_checks.ps1`
 - [x] `git diff --check`
