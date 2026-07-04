@@ -294,23 +294,25 @@ func _build_prep_rows() -> void:
 
 func _add_status_panel() -> void:
 	var rank_data: Dictionary = _get_current_rank()
-	_add_panel("ギルド状況", [
-		"%s  ランク%s  %d年目 %dターン  名声 %d  所持金 %d" % [
-			guild_name,
-			rank_data["name"],
-			current_year,
-			current_turn,
-			fame,
-			gold,
-		],
-		"今年: %d勝%d敗  通算戦闘 %d  大会優勝 %d  卒業生 %d" % [
-			current_year_wins,
-			current_year_losses,
-			total_battles,
-			tournament_wins,
-			graduated_count,
-		],
-	], "StatusPanel", priority_rows)
+	var label := Label.new()
+	label.name = "StatusPanel"
+	label.text = "%s / ランク%s / %d年目 %dターン / 名声 %d / Gold %d / 今年 %d勝%d敗 / 通算 %d戦 / 優勝 %d / 卒業 %d" % [
+		guild_name,
+		rank_data["name"],
+		current_year,
+		current_turn,
+		fame,
+		gold,
+		current_year_wins,
+		current_year_losses,
+		total_battles,
+		tournament_wins,
+		graduated_count,
+	]
+	label.custom_minimum_size = Vector2(0.0, 24.0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	priority_rows.add_child(label)
 
 
 func _normalize_current_view() -> void:
@@ -402,17 +404,19 @@ func _add_first_run_guide_panel() -> void:
 
 
 func _add_next_action_panel() -> void:
-	var lines: Array[String] = []
+	var label := Label.new()
+	label.name = "NextActionPanel"
 	if campaign_completed:
-		lines.append("3年の活動が終了しました。通算成績を確認し、次の改善方針を考える段階です。")
+		label.text = "次: 3年の活動終了。結果タブで通算成績を確認します。"
 	elif current_turn == TURNS_PER_YEAR:
-		lines.append("次の行動: 年末大会に出場")
-		lines.append("このターンは訓練できません。編成と作戦を確認して大会へ進みます。")
+		label.text = "次: 年末大会に出場。このターンは訓練できません。"
 	else:
 		var mission: Dictionary = _get_current_mission()
-		lines.append("次の行動: %sに出発、または訓練で1ターン育成" % mission["display_name"])
-		lines.append("任務は経験/所持金/名声の伸びが違います。目的に合わせて下の任務を選びます。")
-	_add_panel("次にやること", lines, "NextActionPanel", priority_rows)
+		label.text = "次: %sへ出発、または訓練で育成。任務選択は編成タブ。" % mission["display_name"]
+	label.custom_minimum_size = Vector2(0.0, 24.0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	priority_rows.add_child(label)
 
 
 func _add_milestone_panel() -> void:
@@ -633,86 +637,69 @@ func _add_table_cell(table: GridContainer, text: String, font_size: int, min_wid
 
 
 func _add_action_row() -> void:
-	var panel := _create_panel("行動選択", "ActionPanel", priority_rows)
-	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var row := HBoxContainer.new()
+	row.name = "ActionPanel"
+	row.custom_minimum_size = Vector2(0.0, 42.0)
+	priority_rows.add_child(row)
 	var tournament_turn: bool = current_turn == TURNS_PER_YEAR
-
-	var primary_row := HBoxContainer.new()
-	primary_row.name = "PrimaryActionRow"
-	primary_row.custom_minimum_size = Vector2(0.0, 50.0)
-	content.add_child(primary_row)
 
 	primary_action_button = Button.new()
 	primary_action_button.name = "PrimaryActionButton"
 	primary_action_button.text = _get_primary_action_text()
-	primary_action_button.custom_minimum_size = Vector2(260.0, 48.0)
+	primary_action_button.custom_minimum_size = Vector2(180.0, 40.0)
 	primary_action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	primary_action_button.focus_mode = Control.FOCUS_ALL
 	primary_action_button.disabled = campaign_completed
 	primary_action_button.pressed.connect(start_battle)
-	primary_row.add_child(primary_action_button)
-
-	var primary_hint := Label.new()
-	primary_hint.custom_minimum_size = Vector2(420.0, 0.0)
-	primary_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	primary_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	primary_hint.text = _get_primary_action_hint(tournament_turn)
-	primary_row.add_child(primary_hint)
+	row.add_child(primary_action_button)
 
 	var training_label := Label.new()
-	training_label.text = "育成メニュー"
-	content.add_child(training_label)
-
-	var training_row := HBoxContainer.new()
-	training_row.name = "TrainingActionsRow"
-	training_row.custom_minimum_size = Vector2(0.0, 42.0)
-	content.add_child(training_row)
+	training_label.text = "育成:"
+	training_label.custom_minimum_size = Vector2(48.0, 0.0)
+	row.add_child(training_label)
 
 	var drill_button := Button.new()
 	drill_button.text = "攻撃訓練"
-	drill_button.custom_minimum_size = Vector2(160.0, 0.0)
+	drill_button.custom_minimum_size = Vector2(120.0, 40.0)
 	drill_button.focus_mode = Control.FOCUS_ALL
 	drill_button.disabled = tournament_turn
 	drill_button.pressed.connect(_train_guild.bind("drill"))
-	training_row.add_child(drill_button)
+	row.add_child(drill_button)
 
 	var endurance_button := Button.new()
 	endurance_button.text = "耐久訓練"
-	endurance_button.custom_minimum_size = Vector2(160.0, 0.0)
+	endurance_button.custom_minimum_size = Vector2(120.0, 40.0)
 	endurance_button.focus_mode = Control.FOCUS_ALL
 	endurance_button.disabled = tournament_turn
 	endurance_button.pressed.connect(_train_guild.bind("endurance"))
-	training_row.add_child(endurance_button)
+	row.add_child(endurance_button)
 
 	var tactics_button := Button.new()
 	tactics_button.text = "戦術訓練"
-	tactics_button.custom_minimum_size = Vector2(160.0, 0.0)
+	tactics_button.custom_minimum_size = Vector2(120.0, 40.0)
 	tactics_button.focus_mode = Control.FOCUS_ALL
 	tactics_button.disabled = tournament_turn
 	tactics_button.pressed.connect(_train_guild.bind("tactics"))
-	training_row.add_child(tactics_button)
+	row.add_child(tactics_button)
 
 	var system_label := Label.new()
-	system_label.text = "システム"
-	content.add_child(system_label)
+	system_label.text = "保存:"
+	system_label.custom_minimum_size = Vector2(48.0, 0.0)
+	row.add_child(system_label)
 
-	var save_row := HBoxContainer.new()
-	save_row.name = "SaveActionsRow"
-	save_row.custom_minimum_size = Vector2(0.0, 42.0)
-	content.add_child(save_row)
 	var save_button := Button.new()
 	save_button.text = "保存"
-	save_button.custom_minimum_size = Vector2(110.0, 0.0)
+	save_button.custom_minimum_size = Vector2(88.0, 40.0)
 	save_button.focus_mode = Control.FOCUS_ALL
 	save_button.pressed.connect(save_game)
-	save_row.add_child(save_button)
+	row.add_child(save_button)
 
 	var load_button := Button.new()
 	load_button.text = "読込"
-	load_button.custom_minimum_size = Vector2(110.0, 0.0)
+	load_button.custom_minimum_size = Vector2(88.0, 40.0)
 	load_button.focus_mode = Control.FOCUS_ALL
 	load_button.pressed.connect(load_game)
-	save_row.add_child(load_button)
+	row.add_child(load_button)
 
 
 func _get_primary_action_text() -> String:

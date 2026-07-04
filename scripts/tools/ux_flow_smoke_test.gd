@@ -70,8 +70,8 @@ func _run() -> void:
 		return
 
 	var action_text := _collect_label_text(action_panel)
-	if not action_text.contains("育成メニュー") or not action_text.contains("システム"):
-		push_error("Expected action panel to separate training and system actions.")
+	if not action_text.contains("育成") or not action_text.contains("保存"):
+		push_error("Expected action bar to separate training and save/load actions.")
 		_fail(battle)
 		return
 
