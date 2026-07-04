@@ -374,6 +374,7 @@ func _add_current_view_content() -> void:
 
 func _add_overview_view() -> void:
 	_add_overview_summary_panel()
+	_add_year_progress_panel()
 	if _should_show_first_run_guide():
 		_add_first_run_guide_panel()
 	else:
@@ -403,6 +404,42 @@ func _add_overview_summary_panel() -> void:
 	_add_summary_card(grid, "メンバー", "出撃 %d / 所属 %d" % [selected_member_indices.size(), guild_members.size()])
 	_add_summary_card(grid, "次の任務", str(_get_current_mission()["display_name"]) if current_turn != TURNS_PER_YEAR else "年末大会")
 	_add_summary_card(grid, "卒業", "%d人" % graduated_count)
+
+
+func _add_year_progress_panel() -> void:
+	var panel := _create_panel("年間進行", "YearProgressPanel")
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var row := HBoxContainer.new()
+	row.name = "YearProgressSteps"
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_theme_constant_override("separation", 6)
+	content.add_child(row)
+
+	for turn_index: int in TURNS_PER_YEAR:
+		var turn_number: int = turn_index + 1
+		var active: bool = turn_number == current_turn
+		var completed: bool = turn_number < current_turn
+		var step := PanelContainer.new()
+		step.name = "YearProgressStep_%d" % turn_number
+		step.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		step.custom_minimum_size = Vector2(0.0, 42.0)
+		step.add_theme_stylebox_override("panel", _make_year_step_style(active, completed))
+		row.add_child(step)
+
+		var margin := MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 8)
+		margin.add_theme_constant_override("margin_top", 5)
+		margin.add_theme_constant_override("margin_right", 8)
+		margin.add_theme_constant_override("margin_bottom", 5)
+		step.add_child(margin)
+
+		var label := Label.new()
+		label.text = "%dT %s" % [turn_number, "大会" if turn_number == TURNS_PER_YEAR else "任務/育成"]
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 14)
+		label.add_theme_color_override("font_color", UI_TEXT if active else UI_MUTED)
+		margin.add_child(label)
 
 
 func _add_formation_view() -> void:
@@ -831,6 +868,14 @@ func _make_style(bg_color: Color, border_color: Color, border_width: int, corner
 	style.set_border_width_all(border_width)
 	style.set_corner_radius_all(corner_radius)
 	return style
+
+
+func _make_year_step_style(active: bool, completed: bool) -> StyleBoxFlat:
+	if active:
+		return _make_style(Color(0.18, 0.28, 0.38), UI_ACCENT_HOVER, 1, 3)
+	if completed:
+		return _make_style(Color(0.12, 0.18, 0.16), Color(0.28, 0.45, 0.36), 1, 3)
+	return _make_style(UI_PANEL_ALT, UI_BORDER, 1, 3)
 
 
 func _add_party_row(slot_index: int) -> void:

@@ -53,6 +53,13 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	var year_progress_panel := _find_latest_named(config_rows, "YearProgressPanel")
+	var year_progress_text := _collect_label_text(year_progress_panel)
+	if year_progress_panel == null or not year_progress_text.contains("1T") or not year_progress_text.contains("大会"):
+		push_error("Expected year progress panel to show season flow, got: %s" % year_progress_text)
+		_fail(battle)
+		return
+
 	var action_panel := _find_latest_named(priority_rows, "ActionPanel")
 	if action_panel == null:
 		push_error("Expected ActionPanel to group player actions.")
