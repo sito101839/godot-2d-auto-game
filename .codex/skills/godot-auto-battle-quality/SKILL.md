@@ -24,7 +24,8 @@ Use this skill for long-running implementation work in `godot-2d-auto-game`, esp
 3. Before committing, run the quality gate that matches the change size.
 4. Commit when the user asks to commit, after reporting the validation evidence.
 5. Leave `main` untouched until the user reviews the branch and explicitly approves merging to `main`.
-6. Do not push unless the user explicitly asks for it.
+6. When the user approves merging a work branch to `main`, merge it and push `main` as part of the same handoff.
+7. Do not push feature/work branches unless the user explicitly asks for it.
 
 ## Available Commands
 

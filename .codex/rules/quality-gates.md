@@ -32,5 +32,6 @@ These rules apply to work in this repository.
 - Commit at sensible implementation boundaries after the relevant quality gates pass.
 - Commit when the user asks to commit after reviewing the work.
 - Do not merge to `main` until the user has reviewed the branch and explicitly said OK to merge.
-- Do not push without explicit user approval.
+- Treat approval to merge a work branch to `main` as approval to push `main` after the merge succeeds.
+- Do not push feature/work branches without explicit user approval.
 - Do not revert unrelated user changes.
