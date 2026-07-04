@@ -18,13 +18,13 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	var config_rows := battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
-	if config_rows == null:
-		push_error("ConfigRows was not found under RosterScroll.")
+	var priority_rows := battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	if priority_rows == null:
+		push_error("PriorityRows was not found.")
 		_fail(battle)
 		return
 
-	var start_button := _find_latest_named(config_rows, "PrimaryActionButton") as Button
+	var start_button := _find_latest_named(priority_rows, "PrimaryActionButton") as Button
 	if start_button == null or start_button.text != "任務へ出発":
 		push_error("Expected mission start text at year start.")
 		_fail(battle)
@@ -37,20 +37,20 @@ func _run() -> void:
 	manager.call("_train_guild", "tactics")
 	await process_frame
 
-	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
-	if config_rows == null:
-		push_error("ConfigRows was not found under RosterScroll.")
+	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	if priority_rows == null:
+		push_error("PriorityRows was not found.")
 		_fail(battle)
 		return
 
-	start_button = _find_latest_named(config_rows, "PrimaryActionButton") as Button
+	start_button = _find_latest_named(priority_rows, "PrimaryActionButton") as Button
 	if start_button == null or start_button.text != "大会に出場":
 		push_error("Expected tournament start text at year-end.")
 		_fail(battle)
 		return
 
 	var disabled_training_buttons: int = 0
-	for button: Button in _collect_buttons(config_rows):
+	for button: Button in _collect_buttons(priority_rows):
 		if button.text in ["攻撃訓練", "耐久訓練", "戦術訓練"] and button.disabled:
 			disabled_training_buttons += 1
 

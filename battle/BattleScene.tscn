@@ -68,6 +68,11 @@ theme_override_font_sizes/font_size = 30
 text = "ギルドホール"
 horizontal_alignment = 1
 
+[node name="PriorityRows" type="VBoxContainer" parent="UI/PrepPanel/MarginContainer/PrepContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
 [node name="RosterScroll" type="ScrollContainer" parent="UI/PrepPanel/MarginContainer/PrepContent"]
 layout_mode = 2
 size_flags_vertical = 3

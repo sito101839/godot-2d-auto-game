@@ -24,20 +24,36 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	var prep_content := battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent")
+	if prep_content == null:
+		push_error("PrepContent was not found.")
+		_fail(battle)
+		return
+
+	var priority_rows := battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	if priority_rows == null:
+		push_error("PriorityRows was not found.")
+		_fail(battle)
+		return
+
 	var config_rows := battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
 	if config_rows == null:
 		push_error("ConfigRows was not found.")
 		_fail(battle)
 		return
 
-	if _find_latest_named(config_rows, "NextActionPanel") == null:
+	if _find_latest_named(priority_rows, "NextActionPanel") == null:
 		push_error("Expected NextActionPanel to explain the next action.")
 		_fail(battle)
 		return
 
-	var action_panel := _find_latest_named(config_rows, "ActionPanel")
+	var action_panel := _find_latest_named(priority_rows, "ActionPanel")
 	if action_panel == null:
 		push_error("Expected ActionPanel to group player actions.")
+		_fail(battle)
+		return
+	if _find_latest_named(config_rows, "ActionPanel") != null:
+		push_error("ActionPanel should stay outside the scrollable roster area.")
 		_fail(battle)
 		return
 
@@ -53,7 +69,7 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	var mission_panel := _find_latest_named(config_rows, "MissionSelectionPanel")
+	var mission_panel := _find_latest_named(priority_rows, "MissionSelectionPanel")
 	if mission_panel == null:
 		push_error("Expected MissionSelectionPanel on mission turns.")
 		_fail(battle)
@@ -83,8 +99,8 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
-	var next_action_panel := _find_latest_named(config_rows, "NextActionPanel")
+	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	var next_action_panel := _find_latest_named(priority_rows, "NextActionPanel")
 	var next_action_text := _collect_label_text(next_action_panel)
 	if not next_action_text.contains("護衛任務"):
 		push_error("Expected next action panel to reflect the selected mission, got: %s" % next_action_text)
@@ -93,8 +109,8 @@ func _run() -> void:
 
 	manager.call("_train_guild", "drill")
 	await process_frame
-	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
-	var result_panel := _find_latest_named(config_rows, "ResultPanel")
+	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	var result_panel := _find_latest_named(priority_rows, "ResultPanel")
 	var result_text := _collect_label_text(result_panel)
 	if not result_text.contains("Gold -10") or not result_text.contains("次のターン"):
 		push_error("Expected result panel to show structured training details, got: %s" % result_text)
@@ -106,7 +122,8 @@ func _run() -> void:
 	manager.call("_train_guild", "tactics")
 	await process_frame
 
-	var tournament_action_panel := _find_latest_named(config_rows, "ActionPanel")
+	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	var tournament_action_panel := _find_latest_named(priority_rows, "ActionPanel")
 	var tournament_primary_button := _find_latest_named(tournament_action_panel, "PrimaryActionButton") as Button
 	if tournament_primary_button == null or tournament_primary_button.text != "大会に出場":
 		push_error("Expected tournament primary action after three trainings.")
@@ -114,13 +131,14 @@ func _run() -> void:
 		return
 
 	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
-	if _find_latest_named(config_rows, "MissionSelectionPanel") != null:
+	priority_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/PriorityRows")
+	if _find_latest_named(priority_rows, "MissionSelectionPanel") != null:
 		push_error("Mission selection should be hidden on tournament turns.")
 		_fail(battle)
 		return
 
 	var disabled_training_buttons: int = 0
-	for button: Button in _collect_buttons(config_rows):
+	for button: Button in _collect_buttons(prep_content):
 		if button.text in ["攻撃訓練", "耐久訓練", "戦術訓練"] and button.disabled:
 			disabled_training_buttons += 1
 

@@ -115,6 +115,7 @@ const MEMBER_NAMES: Array[String] = [
 @onready var effects_parent: Node2D = $"../Effects"
 @onready var result_label: Label = $"../UI/ResultLabel"
 @onready var prep_panel: Control = $"../UI/PrepPanel"
+@onready var priority_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/PriorityRows"
 @onready var config_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows"
 @onready var start_button: Button = $"../UI/PrepPanel/MarginContainer/PrepContent/StartButton"
 @onready var return_button: Button = $"../UI/ReturnButton"
@@ -260,6 +261,8 @@ func _create_guild_member(class_index: int, seed_index: int) -> Dictionary:
 
 
 func _build_prep_rows() -> void:
+	for child: Node in priority_rows.get_children():
+		child.free()
 	for child: Node in config_rows.get_children():
 		child.free()
 
@@ -307,7 +310,7 @@ func _add_status_panel() -> void:
 			tournament_wins,
 			graduated_count,
 		],
-	], "StatusPanel")
+	], "StatusPanel", priority_rows)
 
 
 func _add_next_action_panel() -> void:
@@ -321,7 +324,7 @@ func _add_next_action_panel() -> void:
 		var mission: Dictionary = _get_current_mission()
 		lines.append("次の行動: %sに出発、または訓練で1ターン育成" % mission["display_name"])
 		lines.append("任務は経験/所持金/名声の伸びが違います。目的に合わせて下の任務を選びます。")
-	_add_panel("次にやること", lines, "NextActionPanel")
+	_add_panel("次にやること", lines, "NextActionPanel", priority_rows)
 
 
 func _add_result_panel() -> void:
@@ -331,11 +334,11 @@ func _add_result_panel() -> void:
 		lines.append(last_year_report)
 	if final_report != "":
 		lines.append(final_report)
-	_add_panel("直近の結果", lines, "ResultPanel")
+	_add_panel("直近の結果", lines, "ResultPanel", priority_rows)
 
 
 func _add_mission_selection_panel() -> void:
-	var panel := _create_panel("任務選択", "MissionSelectionPanel")
+	var panel := _create_panel("任務選択", "MissionSelectionPanel", priority_rows)
 	var content := panel.find_child("Content", true, false) as VBoxContainer
 	var hint := Label.new()
 	hint.text = "伸ばしたい報酬を選んでから「任務へ出発」を押します。"
@@ -380,11 +383,12 @@ func _add_section_header(text: String) -> void:
 	config_rows.add_child(label)
 
 
-func _create_panel(title: String, panel_name: String) -> PanelContainer:
+func _create_panel(title: String, panel_name: String, parent: VBoxContainer = null) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = panel_name
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	config_rows.add_child(panel)
+	var target_parent: VBoxContainer = config_rows if parent == null else parent
+	target_parent.add_child(panel)
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 12)
@@ -406,8 +410,8 @@ func _create_panel(title: String, panel_name: String) -> PanelContainer:
 	return panel
 
 
-func _add_panel(title: String, lines: Array[String], panel_name: String) -> void:
-	var panel := _create_panel(title, panel_name)
+func _add_panel(title: String, lines: Array[String], panel_name: String, parent: VBoxContainer = null) -> void:
+	var panel := _create_panel(title, panel_name, parent)
 	var content := panel.find_child("Content", true, false) as VBoxContainer
 	for line: String in lines:
 		var label := Label.new()
@@ -489,7 +493,7 @@ func _add_member_summary(member_index: int) -> void:
 
 
 func _add_action_row() -> void:
-	var panel := _create_panel("行動選択", "ActionPanel")
+	var panel := _create_panel("行動選択", "ActionPanel", priority_rows)
 	var content := panel.find_child("Content", true, false) as VBoxContainer
 	var tournament_turn: bool = current_turn == TURNS_PER_YEAR
 
