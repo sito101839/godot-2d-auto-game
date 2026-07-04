@@ -397,7 +397,7 @@ func _add_overview_summary_panel() -> void:
 
 	var rank_data: Dictionary = _get_current_rank()
 	_add_summary_card(grid, "年度", "%d年目 %d/%dターン" % [current_year, current_turn, TURNS_PER_YEAR])
-	_add_summary_card(grid, "ランク", "%s / 名声 %d" % [rank_data["name"], fame])
+	_add_summary_card(grid, "ランク", "%s / %s" % [rank_data["name"], _get_rank_progress_text()])
 	_add_summary_card(grid, "資金", "Gold %d" % gold)
 	_add_summary_card(grid, "今年", "%d勝%d敗" % [current_year_wins, current_year_losses])
 	_add_summary_card(grid, "通算", "%d戦 / 優勝 %d" % [total_battles, tournament_wins])
@@ -1209,6 +1209,14 @@ func _get_current_rank() -> Dictionary:
 		if fame >= int(rank["threshold"]):
 			current_rank = rank
 	return current_rank
+
+
+func _get_rank_progress_text() -> String:
+	for rank: Dictionary in GUILD_RANKS:
+		var threshold: int = int(rank["threshold"])
+		if fame < threshold:
+			return "名声 %d / 次%sまで%d" % [fame, rank["name"], threshold - fame]
+	return "名声 %d / 最高ランク" % fame
 
 
 func _get_member_trait(member: Dictionary) -> Dictionary:

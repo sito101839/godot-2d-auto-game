@@ -65,6 +65,11 @@ func _run() -> void:
 		push_error("Expected year progress panel to show season flow, got: %s" % year_progress_text)
 		_fail(battle)
 		return
+	var overview_text := _collect_label_text(config_rows)
+	if not overview_text.contains("次Dまで"):
+		push_error("Expected overview to show next guild rank progress, got: %s" % overview_text)
+		_fail(battle)
+		return
 
 	var action_panel := _find_latest_named(priority_rows, "ActionPanel")
 	if action_panel == null:
