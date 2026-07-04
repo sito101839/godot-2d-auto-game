@@ -1,6 +1,6 @@
 ---
 name: godot-auto-battle-quality
-description: Use when working on this Godot auto-battle project's quality gates, long-running implementation validation, smoke tests, balance simulations, beta checklist updates, or debugging regressions in guild progression, yearly cycles, saves, UI state, and battle behavior.
+description: Use when working on this Godot auto-battle project's quality gates, long-running implementation validation, smoke tests, balance review, beta checklist updates, or debugging regressions in guild progression, yearly cycles, saves, UI state, and battle behavior.
 ---
 
 # Godot Auto Battle Quality
@@ -40,6 +40,28 @@ godot --path . --script res://scripts/tools/capture_guild_hall_screenshot.gd
 The runner writes logs under `.godot/smoke_test_logs/`.
 The screenshot capture tool writes GUI-rendered PNGs under `.godot/screenshots/`.
 
+## Balance Design Review
+
+Use this as a lightweight design check when changing class stats, traits, missions, rewards, guild ranks, enemy scaling, target selection, movement, formations, attack timing, or battle feedback.
+
+Current project stage: content is still sparse and tuning changes are large. Do not require win-rate validation, large simulation batches, strict DPS targets, or fixed battle-duration targets as completion gates yet. Treat those metrics as things to consider and report qualitatively unless the user explicitly asks for deeper tuning.
+
+For balance-sensitive changes:
+
+1. State the player-facing purpose: what decision, tension, reward, readability, or role distinction the change should create.
+2. List the changed tuning knobs, such as HP, attack power, range, speed, attack interval, XP, Gold, Fame, rank thresholds, enemy level scaling, mission multipliers, role movement, or targeting priority.
+3. Explain likely impact on the current prototype:
+   - battle length, only as a rough expectation
+   - blue/red advantage, only as a rough expectation
+   - damage dealt/taken and survival shape
+   - XP/Gold/Fame pace
+   - rank progression and recruit/enemy scaling
+   - whether any class, trait, mission, target policy, or formation becomes too dominant or useless
+   - whether the player can understand why a battle was won or lost from the result UI
+4. Keep important tuning values in named constants, definitions, resources, or docs. Avoid burying major balance numbers in behavior code.
+5. Run `scripts/tools/run_quality_checks.ps1 -IncludeBalance` when the change touches combat tuning, enemy scaling, class stats, target selection, movement, or formation behavior. Interpret `balance_sample_smoke_test.gd` as a lightweight finish-time/regression sample, not a win-rate proof.
+6. Summarize remaining balance risks instead of claiming final balance.
+
 ## GUI Screenshot Review
 
 Use this for screen layout, visual density, clipping, readability, and UX quality checks:
@@ -70,7 +92,7 @@ Important details:
 - `ui_state_smoke_test.gd`: Japanese UI state and tournament training lockout.
 - `ux_flow_smoke_test.gd`: guild hall screen flow, tabs, action grouping, and UX structure.
 - `capture_guild_hall_screenshot.gd`: GUI-mode Viewport PNG capture for visual review.
-- `balance_sample_smoke_test.gd`: optional sample battle distribution and finish-time check.
+- `balance_sample_smoke_test.gd`: optional lightweight battle completion and finish-time regression sample; not a win-rate validation gate.
 
 ## Debugging Rules
 
