@@ -1,16 +1,23 @@
 # godot-2d-auto-game
 
-Godot 4.6 の 2D オートバトル最小プロトタイプです。
+Godot 4.6 の 2D ギルド育成オートバトルプロトタイプです。
 
 ## 内容
 
+- プレイヤーは小さな冒険者ギルドのギルドマスターです。
+- ギルドメンバーを育成、編成して任務や大会に送り出します。
 - 青チームと赤チームが自動で接近して攻撃します。
-- Warrior、Archer、Rogue の3種類のユニットを選択できます。
-- Nearest、Low HP、High HP の3種類のターゲット方針を選択できます。
-- Frontline、Backline、Flanker の3種類の隊列ロールを選択できます。
-- Backline は攻撃参加を優先しつつ、味方 Frontline の中心位置より前に出すぎないように動きます。
+- 戦士、弓使い、盗賊、魔術師、神官の5種類の職業があります。
+- 近い敵、低HP、高HP の3種類のターゲット方針を選択できます。
+- 前衛、後衛、遊撃の3種類の隊列ロールを選択できます。
+- 後衛は攻撃参加を優先しつつ、味方前衛の中心位置より前に出すぎないように動きます。
 - 近距離ユニットは斬撃、遠距離ユニットは弾の攻撃エフェクトでダメージを与えます。
-- 準備画面から戦闘を開始し、勝敗後に準備画面へ戻れます。
+- 戦闘後に出撃メンバーが経験値を得て、レベルアップで能力が伸びます。
+- 1年は4ターンで、4ターン目は大会扱いになります。
+- 年度が進むと在籍年数が増え、長期的には卒業と新人加入が起きます。
+- 年間成績、総戦闘数、大会勝利数を記録します。
+- `user://guild_save.json` に保存/ロードできます。
+- ギルド画面から訓練または戦闘を選び、勝敗後にギルド画面へ戻れます。
 
 ## 起動
 
@@ -22,7 +29,26 @@ godot --path .
 
 ```powershell
 godot --headless --path . --quit
+.\scripts\tools\run_quality_checks.ps1
+```
+
+個別に確認する場合:
+
+```powershell
 godot --headless --path . --script res://scripts/tools/hello_world_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/battle_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/target_selection_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/guild_progression_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/guild_year_cycle_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/guild_three_year_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/ui_state_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/balance_sample_smoke_test.gd
 ```
+
+バランス確認を含める場合:
+
+```powershell
+.\scripts\tools\run_quality_checks.ps1 -IncludeBalance
+```
+
+プロジェクト固有の品質ルールは `.codex/rules/`、Codex向け作業手順は `.codex/skills/godot-auto-battle-quality/` にあります。

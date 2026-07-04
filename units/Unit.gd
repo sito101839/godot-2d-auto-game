@@ -16,6 +16,9 @@ const PROJECTILE_EFFECT_SCENE := preload("res://effects/ProjectileEffect.tscn")
 @export var unit_type_name: String = "Warrior"
 @export var target_policy: TargetPolicy = TargetPolicy.NEAREST
 @export var formation_role: FormationRole = FormationRole.FRONTLINE
+@export var display_name: String = ""
+@export var member_level: int = 1
+@export var member_id: int = -1
 @export var max_hp: int = 100
 @export var attack_power: int = 10
 @export var attack_range: float = 80.0
@@ -79,12 +82,18 @@ func setup(
 	new_attack_power: int,
 	new_attack_range: float,
 	new_move_speed: float,
-	new_effects_parent: Node2D
+	new_effects_parent: Node2D,
+	new_display_name: String = "",
+	new_member_level: int = 1,
+	new_member_id: int = -1
 ) -> void:
 	team_id = new_team_id
 	unit_type_name = new_unit_type_name
 	target_policy = new_target_policy
 	formation_role = new_formation_role
+	display_name = new_display_name
+	member_level = new_member_level
+	member_id = new_member_id
 	max_hp = new_max_hp
 	attack_power = new_attack_power
 	attack_range = new_attack_range
@@ -304,7 +313,8 @@ func _update_name_label() -> void:
 		_:
 			role_suffix = "F"
 
-	name_label.text = "%s%s" % [unit_type_name.substr(0, 1), role_suffix]
+	var shown_name: String = display_name if display_name != "" else unit_type_name
+	name_label.text = "%s Lv%d %s" % [shown_name, member_level, role_suffix]
 
 
 func _die() -> void:
