@@ -67,4 +67,12 @@ godot --headless --path . --script res://scripts/tools/balance_sample_smoke_test
 .\scripts\tools\run_quality_checks.ps1 -IncludeBalance
 ```
 
+GUI描画のスクリーンショットを確認する場合:
+
+```powershell
+godot --path . --script res://scripts/tools/capture_guild_hall_screenshot.gd
+```
+
+画像は `.godot/screenshots/` に保存されます。Viewport textureを使うため、`--headless` ではなく通常GUIモードで実行します。
+
 プロジェクト固有の品質ルールは `.codex/rules/`、Codex向け作業手順は `.codex/skills/godot-auto-battle-quality/` にあります。
