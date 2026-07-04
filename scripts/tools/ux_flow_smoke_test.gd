@@ -57,6 +57,12 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	var initial_text := _collect_label_text(config_rows)
+	if not initial_text.contains("出撃中:") or not initial_text.contains("役割目安:"):
+		push_error("Expected member summaries to show sortie status and role hints.")
+		_fail(battle)
+		return
+
 	manager.call("_select_mission", 1)
 	await process_frame
 	if int(manager.get("current_mission_index")) != 1:
@@ -74,6 +80,14 @@ func _run() -> void:
 
 	manager.call("_train_guild", "drill")
 	await process_frame
+	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
+	var result_panel := _find_latest_named(config_rows, "ResultPanel")
+	var result_text := _collect_label_text(result_panel)
+	if not result_text.contains("Gold -10") or not result_text.contains("次のターン"):
+		push_error("Expected result panel to show structured training details, got: %s" % result_text)
+		_fail(battle)
+		return
+
 	manager.call("_train_guild", "endurance")
 	await process_frame
 	manager.call("_train_guild", "tactics")

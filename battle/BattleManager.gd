@@ -138,6 +138,7 @@ var next_member_id: int = 1
 var current_battle_kind: String = "mission"
 var current_mission_index: int = 0
 var last_result_summary: String = "ようこそ、ギルドマスター。"
+var last_result_details: Array[String] = ["まずは出撃メンバーと任務を確認し、訓練するか任務へ出発します。"]
 var last_year_report: String = ""
 var final_report: String = ""
 var campaign_completed: bool = false
@@ -322,6 +323,7 @@ func _add_next_action_panel() -> void:
 
 func _add_result_panel() -> void:
 	var lines: Array[String] = [last_result_summary]
+	lines.append_array(last_result_details)
 	if last_year_report != "":
 		lines.append(last_year_report)
 	if final_report != "":
@@ -451,12 +453,25 @@ func _add_member_summary(member_index: int) -> void:
 	_ensure_member_defaults(member)
 	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
 	var trait_data: Dictionary = _get_member_trait(member)
-	var label := Label.new()
-	label.text = "%s  Lv%d %s/%s  HP:%d 攻撃:%d 射程:%d 速度:%d  経験:%d/%d  在籍:%d年  MVP:%d" % [
+	var row := VBoxContainer.new()
+	row.name = "MemberSummary_%d" % member_index
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	config_rows.add_child(row)
+
+	var main_label := Label.new()
+	main_label.text = "%s%s  Lv%d %s / %s  %s" % [
+		"出撃中: " if selected_member_indices.has(member_index) else "控え: ",
 		member["name"],
 		member["level"],
 		class_data["display_name"],
 		trait_data["display_name"],
+		_get_member_role_hint(member),
+	]
+	main_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(main_label)
+
+	var stat_label := Label.new()
+	stat_label.text = "   HP %d / 攻撃 %d / 射程 %d / 速度 %d / 経験 %d/%d / 在籍 %d年 / MVP %d" % [
 		member["hp"],
 		member["attack_power"],
 		int(member["attack_range"]),
@@ -466,7 +481,8 @@ func _add_member_summary(member_index: int) -> void:
 		member["years_in_guild"],
 		member.get("mvp_count", 0),
 	]
-	config_rows.add_child(label)
+	stat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(stat_label)
 
 
 func _add_action_row() -> void:
@@ -526,9 +542,10 @@ func _refresh_party_row(slot_index: int) -> void:
 	var member: Dictionary = guild_members[selected_member_indices[slot_index]]
 	_ensure_member_defaults(member)
 	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	var trait_data: Dictionary = _get_member_trait(member)
 	var target_data: Dictionary = TARGET_POLICIES[member["target_policy"]]
 	var role_data: Dictionary = FORMATION_ROLES[member["formation_role"]]
-	unit_buttons[slot_index].text = "%s  Lv%d %s" % [member["name"], member["level"], class_data["display_name"]]
+	unit_buttons[slot_index].text = "変更: %s  Lv%d %s/%s" % [member["name"], member["level"], class_data["display_name"], trait_data["display_name"]]
 	target_buttons[slot_index].text = "狙い: %s" % target_data["display_name"]
 	role_buttons[slot_index].text = "役割: %s" % role_data["display_name"]
 
@@ -598,7 +615,11 @@ func _train_guild(training_type: String) -> void:
 				_award_member_xp(index, 8)
 
 	gold = max(0, gold - 10)
-	last_result_summary = "%sを行いました。全員が経験値を獲得しました。" % _get_training_display_name(training_type)
+	last_result_summary = "%s完了: 全員が経験値を獲得" % _get_training_display_name(training_type)
+	last_result_details = [
+		"Gold -10 / 全員 経験 +8",
+		"次のターンへ進みました。大会ターンでは訓練できません。",
+	]
 	_advance_calendar()
 	_show_prep_screen()
 
@@ -632,6 +653,23 @@ func _get_member_trait(member: Dictionary) -> Dictionary:
 	if trait_index < 0 or trait_index >= TRAIT_DEFINITIONS.size():
 		trait_index = 0
 	return TRAIT_DEFINITIONS[trait_index]
+
+
+func _get_member_role_hint(member: Dictionary) -> String:
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	match str(class_data["name"]):
+		"Warrior":
+			return "役割目安: 前線で耐える"
+		"Rogue":
+			return "役割目安: 素早く削る"
+		"Mage":
+			return "役割目安: 後方火力"
+		"Archer":
+			return "役割目安: 遠距離支援"
+		"Cleric":
+			return "役割目安: 安定支援"
+		_:
+			return "役割目安: 汎用"
 
 
 func _apply_trait_base_bonus(member: Dictionary) -> void:
@@ -866,15 +904,15 @@ func _apply_battle_rewards(blue_won: bool) -> void:
 	else:
 		current_year_losses += 1
 	var rank_text: String = _get_current_rank()["name"]
-	last_result_summary = "%s完了。%s 名声 +%d、所持金 +%d。MVP: %s。ランク%s\n%s" % [
+	last_result_summary = "%s完了: %s / MVP: %s / 名声 +%d / Gold +%d / ランク%s" % [
 		"大会" if current_battle_kind == "tournament" else "任務",
 		"勝利！" if blue_won else "敗北。",
+		mvp_name,
 		fame_gain,
 		gold_gain,
-		mvp_name,
 		rank_text,
-		"\n".join(battle_report_lines),
 	]
+	last_result_details = battle_report_lines.duplicate()
 	_advance_calendar()
 
 
@@ -940,11 +978,11 @@ func _process_year_end(finished_year: int, wins: int, losses: int) -> void:
 		guild_members.append(recruit)
 
 	_normalize_selected_members()
-	last_result_summary += " %d年目は%d勝%d敗で終了。" % [finished_year, wins, losses]
+	last_result_details.append("%d年目終了: %d勝%d敗" % [finished_year, wins, losses])
 	if not graduates.is_empty():
-		last_result_summary += " 卒業: %s。新人が加入しました。" % "、".join(graduates)
+		last_result_details.append("卒業: %s / 新人が加入しました。" % "、".join(graduates))
 	else:
-		last_result_summary += " 新しい一年が始まります。"
+		last_result_details.append("新しい一年が始まります。")
 	last_year_report = _build_year_report(finished_year, wins, losses, graduates, recruited_names)
 	if completed_years >= CAMPAIGN_YEARS:
 		campaign_completed = true
@@ -1052,10 +1090,12 @@ func save_game() -> void:
 	if not bool(result["ok"]):
 		push_error(result["error"])
 		last_result_summary = "保存に失敗しました。"
+		last_result_details = [str(result["error"])]
 		_show_prep_screen()
 		return
 
 	last_result_summary = "ギルドを保存しました。"
+	last_result_details = ["保存先: %s" % save_path]
 	_show_prep_screen()
 
 
@@ -1065,11 +1105,13 @@ func load_game() -> void:
 		if str(result["error"]) != "No save file found.":
 			push_error(result["error"])
 		last_result_summary = "セーブデータがありません。" if str(result["error"]) == "No save file found." else "読込に失敗しました。"
+		last_result_details = [str(result["error"])]
 		_show_prep_screen()
 		return
 
 	_apply_save_data(result["data"])
 	last_result_summary = "ギルドを読み込みました。"
+	last_result_details = ["保存時点のギルド状況を復元しました。"]
 	_show_prep_screen()
 
 
