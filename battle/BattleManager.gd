@@ -105,6 +105,15 @@ const VIEW_DEFINITIONS: Array[Dictionary] = [
 	{"name": "reports", "display_name": "結果"},
 ]
 
+const UI_BG: Color = Color(0.06, 0.075, 0.09)
+const UI_PANEL: Color = Color(0.095, 0.115, 0.135)
+const UI_PANEL_ALT: Color = Color(0.12, 0.145, 0.17)
+const UI_BORDER: Color = Color(0.23, 0.29, 0.35)
+const UI_ACCENT: Color = Color(0.24, 0.43, 0.62)
+const UI_ACCENT_HOVER: Color = Color(0.30, 0.52, 0.73)
+const UI_TEXT: Color = Color(0.90, 0.92, 0.94)
+const UI_MUTED: Color = Color(0.64, 0.70, 0.76)
+
 const MEMBER_NAMES: Array[String] = [
 	"アルマ",
 	"ブラム",
@@ -122,6 +131,8 @@ const MEMBER_NAMES: Array[String] = [
 @onready var effects_parent: Node2D = $"../Effects"
 @onready var result_label: Label = $"../UI/ResultLabel"
 @onready var prep_panel: Control = $"../UI/PrepPanel"
+@onready var prep_background: ColorRect = $"../UI/PrepPanel/Background"
+@onready var title_label: Label = $"../UI/PrepPanel/MarginContainer/PrepContent/TitleLabel"
 @onready var priority_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/PriorityRows"
 @onready var config_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows"
 @onready var start_button: Button = $"../UI/PrepPanel/MarginContainer/PrepContent/StartButton"
@@ -167,6 +178,7 @@ var last_mvp_member_id: int = -1
 func _ready() -> void:
 	start_button.pressed.connect(start_battle)
 	return_button.pressed.connect(_show_prep_screen)
+	_apply_static_ui_style()
 	_create_initial_roster()
 	_show_prep_screen()
 
@@ -312,6 +324,8 @@ func _add_status_panel() -> void:
 	label.custom_minimum_size = Vector2(0.0, 24.0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override("font_color", UI_TEXT)
+	label.add_theme_font_size_override("font_size", 15)
 	priority_rows.add_child(label)
 
 
@@ -329,11 +343,13 @@ func _add_view_tabs() -> void:
 	priority_rows.add_child(row)
 
 	for view: Dictionary in VIEW_DEFINITIONS:
+		var active: bool = current_view == str(view["name"])
 		var button := Button.new()
 		button.name = "ViewTab_%s" % view["name"]
 		button.custom_minimum_size = Vector2(120.0, 34.0)
 		button.focus_mode = Control.FOCUS_ALL
-		button.text = "■ %s" % view["display_name"] if current_view == str(view["name"]) else str(view["display_name"])
+		button.text = "■ %s" % view["display_name"] if active else str(view["display_name"])
+		_apply_button_style(button, "tab", active)
 		button.pressed.connect(_set_current_view.bind(str(view["name"])))
 		row.add_child(button)
 		view_buttons.append(button)
@@ -416,6 +432,8 @@ func _add_next_action_panel() -> void:
 	label.custom_minimum_size = Vector2(0.0, 24.0)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override("font_color", UI_TEXT)
+	label.add_theme_font_size_override("font_size", 15)
 	priority_rows.add_child(label)
 
 
@@ -440,6 +458,7 @@ func _add_mission_selection_panel() -> void:
 	var hint := Label.new()
 	hint.text = "伸ばしたい報酬を選んでから「任務へ出発」を押します。"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_color_override("font_color", UI_MUTED)
 	content.add_child(hint)
 
 	var row := HBoxContainer.new()
@@ -454,6 +473,7 @@ func _add_mission_selection_panel() -> void:
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_ALL
 		button.text = _get_mission_button_text(index, mission)
+		_apply_button_style(button, "secondary", index == current_mission_index)
 		button.pressed.connect(_select_mission.bind(index))
 		row.add_child(button)
 
@@ -477,6 +497,7 @@ func _add_section_header(text: String) -> void:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", UI_ACCENT_HOVER)
 	config_rows.add_child(label)
 
 
@@ -484,6 +505,7 @@ func _create_panel(title: String, panel_name: String, parent: VBoxContainer = nu
 	var panel := PanelContainer.new()
 	panel.name = panel_name
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_panel_style(panel)
 	var target_parent: VBoxContainer = config_rows if parent == null else parent
 	target_parent.add_child(panel)
 
@@ -503,6 +525,7 @@ func _create_panel(title: String, panel_name: String, parent: VBoxContainer = nu
 	var heading := Label.new()
 	heading.text = title
 	heading.add_theme_font_size_override("font_size", 17)
+	heading.add_theme_color_override("font_color", UI_ACCENT_HOVER)
 	content.add_child(heading)
 	return panel
 
@@ -515,7 +538,68 @@ func _add_panel(title: String, lines: Array[String], panel_name: String, parent:
 		label.text = line
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.add_theme_color_override("font_color", UI_TEXT)
+		label.add_theme_constant_override("line_spacing", 2)
 		content.add_child(label)
+
+
+func _apply_static_ui_style() -> void:
+	prep_background.color = UI_BG
+	title_label.add_theme_color_override("font_color", UI_TEXT)
+	result_label.add_theme_color_override("font_color", UI_TEXT)
+
+
+func _apply_panel_style(panel: PanelContainer) -> void:
+	panel.add_theme_stylebox_override("panel", _make_style(UI_PANEL, UI_BORDER, 1, 3))
+
+
+func _apply_button_style(button: Button, kind: String, active: bool = false) -> void:
+	var normal_color: Color = UI_PANEL_ALT
+	var hover_color: Color = Color(0.17, 0.20, 0.24)
+	var pressed_color: Color = Color(0.20, 0.25, 0.30)
+	var border_color: Color = UI_BORDER
+
+	match kind:
+		"primary":
+			normal_color = UI_ACCENT
+			hover_color = UI_ACCENT_HOVER
+			pressed_color = Color(0.20, 0.36, 0.52)
+			border_color = Color(0.58, 0.74, 0.88)
+		"tab":
+			if active:
+				normal_color = Color(0.18, 0.28, 0.38)
+				hover_color = Color(0.21, 0.33, 0.45)
+				pressed_color = Color(0.16, 0.25, 0.35)
+				border_color = UI_ACCENT_HOVER
+		"secondary":
+			if active:
+				normal_color = Color(0.18, 0.26, 0.32)
+				hover_color = Color(0.22, 0.31, 0.38)
+				pressed_color = Color(0.15, 0.22, 0.28)
+				border_color = UI_ACCENT
+		"system":
+			normal_color = Color(0.13, 0.14, 0.16)
+			hover_color = Color(0.18, 0.19, 0.21)
+			pressed_color = Color(0.10, 0.12, 0.14)
+
+	button.add_theme_stylebox_override("normal", _make_style(normal_color, border_color, 1, 3))
+	button.add_theme_stylebox_override("hover", _make_style(hover_color, border_color, 1, 3))
+	button.add_theme_stylebox_override("pressed", _make_style(pressed_color, border_color, 1, 3))
+	button.add_theme_stylebox_override("focus", _make_style(Color(0, 0, 0, 0), UI_ACCENT_HOVER, 2, 3))
+	button.add_theme_stylebox_override("disabled", _make_style(Color(0.09, 0.10, 0.11), Color(0.16, 0.17, 0.18), 1, 3))
+	button.add_theme_color_override("font_color", UI_TEXT)
+	button.add_theme_color_override("font_hover_color", UI_TEXT)
+	button.add_theme_color_override("font_pressed_color", UI_TEXT)
+	button.add_theme_color_override("font_disabled_color", UI_MUTED)
+
+
+func _make_style(bg_color: Color, border_color: Color, border_width: int, corner_radius: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(corner_radius)
+	return style
 
 
 func _add_party_row(slot_index: int) -> void:
@@ -526,11 +610,14 @@ func _add_party_row(slot_index: int) -> void:
 	var slot_label := Label.new()
 	slot_label.custom_minimum_size = Vector2(72.0, 0.0)
 	slot_label.text = "枠 %d" % (slot_index + 1)
+	slot_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	slot_label.add_theme_color_override("font_color", UI_MUTED)
 	row.add_child(slot_label)
 
 	var member_button := Button.new()
 	member_button.custom_minimum_size = Vector2(250.0, 0.0)
 	member_button.focus_mode = Control.FOCUS_ALL
+	_apply_button_style(member_button, "secondary")
 	member_button.pressed.connect(_cycle_selected_member.bind(slot_index))
 	row.add_child(member_button)
 	unit_buttons.append(member_button)
@@ -538,6 +625,7 @@ func _add_party_row(slot_index: int) -> void:
 	var target_button := Button.new()
 	target_button.custom_minimum_size = Vector2(150.0, 0.0)
 	target_button.focus_mode = Control.FOCUS_ALL
+	_apply_button_style(target_button, "secondary")
 	target_button.pressed.connect(_cycle_target_choice.bind(slot_index))
 	row.add_child(target_button)
 	target_buttons.append(target_button)
@@ -545,6 +633,7 @@ func _add_party_row(slot_index: int) -> void:
 	var role_button := Button.new()
 	role_button.custom_minimum_size = Vector2(132.0, 0.0)
 	role_button.focus_mode = Control.FOCUS_ALL
+	_apply_button_style(role_button, "secondary")
 	role_button.pressed.connect(_cycle_role_choice.bind(slot_index))
 	row.add_child(role_button)
 	role_buttons.append(role_button)
@@ -633,6 +722,7 @@ func _add_table_cell(table: GridContainer, text: String, font_size: int, min_wid
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", UI_MUTED if font_size >= 15 else UI_TEXT)
 	table.add_child(label)
 
 
@@ -650,12 +740,15 @@ func _add_action_row() -> void:
 	primary_action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	primary_action_button.focus_mode = Control.FOCUS_ALL
 	primary_action_button.disabled = campaign_completed
+	_apply_button_style(primary_action_button, "primary")
 	primary_action_button.pressed.connect(start_battle)
 	row.add_child(primary_action_button)
 
 	var training_label := Label.new()
 	training_label.text = "育成:"
 	training_label.custom_minimum_size = Vector2(48.0, 0.0)
+	training_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	training_label.add_theme_color_override("font_color", UI_MUTED)
 	row.add_child(training_label)
 
 	var drill_button := Button.new()
@@ -663,6 +756,7 @@ func _add_action_row() -> void:
 	drill_button.custom_minimum_size = Vector2(120.0, 40.0)
 	drill_button.focus_mode = Control.FOCUS_ALL
 	drill_button.disabled = tournament_turn
+	_apply_button_style(drill_button, "secondary")
 	drill_button.pressed.connect(_train_guild.bind("drill"))
 	row.add_child(drill_button)
 
@@ -671,6 +765,7 @@ func _add_action_row() -> void:
 	endurance_button.custom_minimum_size = Vector2(120.0, 40.0)
 	endurance_button.focus_mode = Control.FOCUS_ALL
 	endurance_button.disabled = tournament_turn
+	_apply_button_style(endurance_button, "secondary")
 	endurance_button.pressed.connect(_train_guild.bind("endurance"))
 	row.add_child(endurance_button)
 
@@ -679,18 +774,22 @@ func _add_action_row() -> void:
 	tactics_button.custom_minimum_size = Vector2(120.0, 40.0)
 	tactics_button.focus_mode = Control.FOCUS_ALL
 	tactics_button.disabled = tournament_turn
+	_apply_button_style(tactics_button, "secondary")
 	tactics_button.pressed.connect(_train_guild.bind("tactics"))
 	row.add_child(tactics_button)
 
 	var system_label := Label.new()
 	system_label.text = "保存:"
 	system_label.custom_minimum_size = Vector2(48.0, 0.0)
+	system_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	system_label.add_theme_color_override("font_color", UI_MUTED)
 	row.add_child(system_label)
 
 	var save_button := Button.new()
 	save_button.text = "保存"
 	save_button.custom_minimum_size = Vector2(88.0, 40.0)
 	save_button.focus_mode = Control.FOCUS_ALL
+	_apply_button_style(save_button, "system")
 	save_button.pressed.connect(save_game)
 	row.add_child(save_button)
 
@@ -698,6 +797,7 @@ func _add_action_row() -> void:
 	load_button.text = "読込"
 	load_button.custom_minimum_size = Vector2(88.0, 40.0)
 	load_button.focus_mode = Control.FOCUS_ALL
+	_apply_button_style(load_button, "system")
 	load_button.pressed.connect(load_game)
 	row.add_child(load_button)
 
