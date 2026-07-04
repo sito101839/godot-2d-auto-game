@@ -288,8 +288,7 @@ func _build_prep_rows() -> void:
 		_add_party_row(slot_index)
 
 	_add_section_header("所属メンバー")
-	for member_index: int in guild_members.size():
-		_add_member_summary(member_index)
+	_add_member_summary_table()
 
 	_add_action_row()
 	if primary_action_button != null:
@@ -511,6 +510,53 @@ func _add_member_summary(member_index: int) -> void:
 	]
 	stat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(stat_label)
+
+
+func _add_member_summary_table() -> void:
+	var table := GridContainer.new()
+	table.name = "MemberSummaryTable"
+	table.columns = 9
+	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	table.add_theme_constant_override("h_separation", 10)
+	table.add_theme_constant_override("v_separation", 4)
+	config_rows.add_child(table)
+
+	for header: String in ["状態", "名前", "職/才能", "役割目安", "HP", "攻撃", "射程", "速度", "経験/実績"]:
+		_add_table_cell(table, header, 15, 86.0)
+
+	for member_index: int in guild_members.size():
+		_add_member_summary_row(table, member_index)
+
+
+func _add_member_summary_row(table: GridContainer, member_index: int) -> void:
+	var member: Dictionary = guild_members[member_index]
+	_ensure_member_defaults(member)
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	var trait_data: Dictionary = _get_member_trait(member)
+
+	_add_table_cell(table, "出撃中" if selected_member_indices.has(member_index) else "控え", 14, 72.0)
+	_add_table_cell(table, "%s Lv%d" % [member["name"], member["level"]], 14, 110.0)
+	_add_table_cell(table, "%s/%s" % [class_data["display_name"], trait_data["display_name"]], 14, 126.0)
+	_add_table_cell(table, _get_member_role_hint(member).replace("役割目安: ", ""), 14, 120.0)
+	_add_table_cell(table, str(member["hp"]), 14, 54.0)
+	_add_table_cell(table, str(member["attack_power"]), 14, 54.0)
+	_add_table_cell(table, str(int(member["attack_range"])), 14, 54.0)
+	_add_table_cell(table, str(int(member["move_speed"])), 14, 54.0)
+	_add_table_cell(table, "EXP %d/%d / MVP %d" % [
+		member["xp"],
+		_get_xp_to_next(member),
+		member.get("mvp_count", 0),
+	], 14, 140.0)
+
+
+func _add_table_cell(table: GridContainer, text: String, font_size: int, min_width: float) -> void:
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(min_width, 0.0)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", font_size)
+	table.add_child(label)
 
 
 func _add_action_row() -> void:

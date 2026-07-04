@@ -94,7 +94,12 @@ func _run() -> void:
 
 	var initial_text := _collect_label_text(config_rows)
 	if not initial_text.contains("出撃中:") or not initial_text.contains("役割目安:"):
-		push_error("Expected member summaries to show sortie status and role hints.")
+		if _find_latest_named(config_rows, "MemberSummaryTable") == null or not initial_text.contains("役割目安"):
+			push_error("Expected member summaries to show sortie status and role hints.")
+			_fail(battle)
+			return
+	if not initial_text.contains("EXP") or not initial_text.contains("MVP"):
+		push_error("Expected member summary table to show growth and achievement columns.")
 		_fail(battle)
 		return
 
