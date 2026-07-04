@@ -373,6 +373,7 @@ func _add_current_view_content() -> void:
 
 
 func _add_overview_view() -> void:
+	_add_overview_summary_panel()
 	if _should_show_first_run_guide():
 		_add_first_run_guide_panel()
 	else:
@@ -380,6 +381,28 @@ func _add_overview_view() -> void:
 			"上部の主行動でゲームを進めます。詳しく調整したい時は、編成・所属・結果タブを切り替えます。",
 			"編成: 出撃メンバー、作戦、任務を決めます。所属: メンバー能力を比較します。結果: 直近結果と節目レポートを確認します。",
 		], "OverviewPanel")
+
+
+func _add_overview_summary_panel() -> void:
+	var panel := _create_panel("現在の状況", "OverviewSummaryPanel")
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var grid := GridContainer.new()
+	grid.name = "OverviewSummaryGrid"
+	grid.columns = 4
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	content.add_child(grid)
+
+	var rank_data: Dictionary = _get_current_rank()
+	_add_summary_card(grid, "年度", "%d年目 %d/%dターン" % [current_year, current_turn, TURNS_PER_YEAR])
+	_add_summary_card(grid, "ランク", "%s / 名声 %d" % [rank_data["name"], fame])
+	_add_summary_card(grid, "資金", "Gold %d" % gold)
+	_add_summary_card(grid, "今年", "%d勝%d敗" % [current_year_wins, current_year_losses])
+	_add_summary_card(grid, "通算", "%d戦 / 優勝 %d" % [total_battles, tournament_wins])
+	_add_summary_card(grid, "メンバー", "出撃 %d / 所属 %d" % [selected_member_indices.size(), guild_members.size()])
+	_add_summary_card(grid, "次の任務", str(_get_current_mission()["display_name"]) if current_turn != TURNS_PER_YEAR else "年末大会")
+	_add_summary_card(grid, "卒業", "%d人" % graduated_count)
 
 
 func _add_formation_view() -> void:
@@ -541,6 +564,39 @@ func _add_panel(title: String, lines: Array[String], panel_name: String, parent:
 		label.add_theme_color_override("font_color", UI_TEXT)
 		label.add_theme_constant_override("line_spacing", 2)
 		content.add_child(label)
+
+
+func _add_summary_card(parent: GridContainer, title: String, value: String) -> void:
+	var card := PanelContainer.new()
+	card.name = "SummaryCard_%s" % title
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size = Vector2(0.0, 54.0)
+	card.add_theme_stylebox_override("panel", _make_style(UI_PANEL_ALT, UI_BORDER, 1, 3))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 7)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 7)
+	card.add_child(margin)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 2)
+	margin.add_child(column)
+
+	var title_label := Label.new()
+	title_label.text = title
+	title_label.add_theme_font_size_override("font_size", 13)
+	title_label.add_theme_color_override("font_color", UI_MUTED)
+	column.add_child(title_label)
+
+	var value_label := Label.new()
+	value_label.text = value
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value_label.add_theme_font_size_override("font_size", 15)
+	value_label.add_theme_color_override("font_color", UI_TEXT)
+	column.add_child(value_label)
 
 
 func _apply_static_ui_style() -> void:
