@@ -148,6 +148,7 @@ var selected_member_indices: Array[int] = [0, 1, 2]
 var unit_buttons: Array[Button] = []
 var target_buttons: Array[Button] = []
 var role_buttons: Array[Button] = []
+var primary_action_button: Button = null
 var combat_stats: Dictionary = {}
 var current_participant_indices: Array[int] = []
 var last_mvp_member_id: int = -1
@@ -214,9 +215,9 @@ func _show_prep_screen() -> void:
 	result_label.text = ""
 	_clear_units()
 	_clear_effects()
-	_build_prep_rows()
 	start_button.text = "大会に出場" if current_turn == TURNS_PER_YEAR else "任務へ出発"
-	start_button.grab_focus()
+	start_button.visible = false
+	_build_prep_rows()
 
 
 func _create_initial_roster() -> void:
@@ -265,6 +266,7 @@ func _build_prep_rows() -> void:
 	unit_buttons.clear()
 	target_buttons.clear()
 	role_buttons.clear()
+	primary_action_button = null
 	_normalize_selected_members()
 
 	_add_status_panel()
@@ -282,8 +284,9 @@ func _build_prep_rows() -> void:
 	for member_index: int in guild_members.size():
 		_add_member_summary(member_index)
 
-	_add_section_header("ギルド活動")
 	_add_action_row()
+	if primary_action_button != null:
+		primary_action_button.grab_focus()
 
 
 func _add_status_panel() -> void:
@@ -486,11 +489,39 @@ func _add_member_summary(member_index: int) -> void:
 
 
 func _add_action_row() -> void:
+	var panel := _create_panel("行動選択", "ActionPanel")
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var tournament_turn: bool = current_turn == TURNS_PER_YEAR
+
+	var primary_row := HBoxContainer.new()
+	primary_row.name = "PrimaryActionRow"
+	primary_row.custom_minimum_size = Vector2(0.0, 50.0)
+	content.add_child(primary_row)
+
+	primary_action_button = Button.new()
+	primary_action_button.name = "PrimaryActionButton"
+	primary_action_button.text = "大会に出場" if tournament_turn else "任務へ出発"
+	primary_action_button.custom_minimum_size = Vector2(260.0, 48.0)
+	primary_action_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	primary_action_button.focus_mode = Control.FOCUS_ALL
+	primary_action_button.pressed.connect(start_battle)
+	primary_row.add_child(primary_action_button)
+
+	var primary_hint := Label.new()
+	primary_hint.custom_minimum_size = Vector2(420.0, 0.0)
+	primary_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	primary_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	primary_hint.text = "編成と作戦を確認して年末大会へ進みます。" if tournament_turn else "%sへ出発します。迷ったらまずここを押せばゲームが進みます。" % _get_current_mission()["display_name"]
+	primary_row.add_child(primary_hint)
+
+	var training_label := Label.new()
+	training_label.text = "育成メニュー"
+	content.add_child(training_label)
+
 	var training_row := HBoxContainer.new()
 	training_row.name = "TrainingActionsRow"
 	training_row.custom_minimum_size = Vector2(0.0, 42.0)
-	config_rows.add_child(training_row)
-	var tournament_turn: bool = current_turn == TURNS_PER_YEAR
+	content.add_child(training_row)
 
 	var drill_button := Button.new()
 	drill_button.text = "攻撃訓練"
@@ -516,10 +547,14 @@ func _add_action_row() -> void:
 	tactics_button.pressed.connect(_train_guild.bind("tactics"))
 	training_row.add_child(tactics_button)
 
+	var system_label := Label.new()
+	system_label.text = "システム"
+	content.add_child(system_label)
+
 	var save_row := HBoxContainer.new()
 	save_row.name = "SaveActionsRow"
 	save_row.custom_minimum_size = Vector2(0.0, 42.0)
-	config_rows.add_child(save_row)
+	content.add_child(save_row)
 	var save_button := Button.new()
 	save_button.text = "保存"
 	save_button.custom_minimum_size = Vector2(110.0, 0.0)

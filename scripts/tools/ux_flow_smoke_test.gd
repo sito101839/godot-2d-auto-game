@@ -24,11 +24,6 @@ func _run() -> void:
 		_fail(battle)
 		return
 
-	if start_button.text != "任務へ出発":
-		push_error("Expected clearer mission start text, got %s." % start_button.text)
-		_fail(battle)
-		return
-
 	var config_rows := battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")
 	if config_rows == null:
 		push_error("ConfigRows was not found.")
@@ -37,6 +32,24 @@ func _run() -> void:
 
 	if _find_latest_named(config_rows, "NextActionPanel") == null:
 		push_error("Expected NextActionPanel to explain the next action.")
+		_fail(battle)
+		return
+
+	var action_panel := _find_latest_named(config_rows, "ActionPanel")
+	if action_panel == null:
+		push_error("Expected ActionPanel to group player actions.")
+		_fail(battle)
+		return
+
+	var primary_action_button := _find_latest_named(action_panel, "PrimaryActionButton") as Button
+	if primary_action_button == null or primary_action_button.text != "任務へ出発":
+		push_error("Expected primary action button for mission departure.")
+		_fail(battle)
+		return
+
+	var action_text := _collect_label_text(action_panel)
+	if not action_text.contains("育成メニュー") or not action_text.contains("システム"):
+		push_error("Expected action panel to separate training and system actions.")
 		_fail(battle)
 		return
 
@@ -93,8 +106,10 @@ func _run() -> void:
 	manager.call("_train_guild", "tactics")
 	await process_frame
 
-	if start_button.text != "大会に出場":
-		push_error("Expected tournament start text after three trainings, got %s." % start_button.text)
+	var tournament_action_panel := _find_latest_named(config_rows, "ActionPanel")
+	var tournament_primary_button := _find_latest_named(tournament_action_panel, "PrimaryActionButton") as Button
+	if tournament_primary_button == null or tournament_primary_button.text != "大会に出場":
+		push_error("Expected tournament primary action after three trainings.")
 		_fail(battle)
 		return
 
