@@ -16,6 +16,9 @@ const PROJECTILE_EFFECT_SCENE := preload("res://effects/ProjectileEffect.tscn")
 @export var unit_type_name: String = "Warrior"
 @export var target_policy: TargetPolicy = TargetPolicy.NEAREST
 @export var formation_role: FormationRole = FormationRole.FRONTLINE
+@export var display_name: String = ""
+@export var member_level: int = 1
+@export var member_id: int = -1
 @export var max_hp: int = 100
 @export var attack_power: int = 10
 @export var attack_range: float = 80.0
@@ -27,6 +30,7 @@ var target: Unit = null
 var attack_cooldown: float = 0.0
 var is_dead: bool = false
 var effects_parent: Node2D = null
+var combat_reporter: Node = null
 
 @onready var visual: Polygon2D = $Visual
 @onready var hp_bar: ProgressBar = $HPBar
@@ -79,12 +83,20 @@ func setup(
 	new_attack_power: int,
 	new_attack_range: float,
 	new_move_speed: float,
-	new_effects_parent: Node2D
+	new_effects_parent: Node2D,
+	new_display_name: String = "",
+	new_member_level: int = 1,
+	new_member_id: int = -1,
+	new_combat_reporter: Node = null
 ) -> void:
 	team_id = new_team_id
 	unit_type_name = new_unit_type_name
 	target_policy = new_target_policy
 	formation_role = new_formation_role
+	display_name = new_display_name
+	member_level = new_member_level
+	member_id = new_member_id
+	combat_reporter = new_combat_reporter
 	max_hp = new_max_hp
 	attack_power = new_attack_power
 	attack_range = new_attack_range
@@ -103,15 +115,23 @@ func setup(
 		_update_name_label()
 
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, attacker_member_id: int = -1) -> void:
 	if is_dead or amount <= 0:
 		return
 
+	var before_hp: int = hp
 	hp = max(0, hp - amount)
+	var actual_damage: int = before_hp - hp
 	_update_hp_bar()
 
 	if hp <= 0:
+		if combat_reporter != null and combat_reporter.has_method("record_combat_hit"):
+			combat_reporter.call("record_combat_hit", attacker_member_id, member_id, actual_damage, true)
 		_die()
+		return
+
+	if combat_reporter != null and combat_reporter.has_method("record_combat_hit"):
+		combat_reporter.call("record_combat_hit", attacker_member_id, member_id, actual_damage, false)
 
 
 func _find_target() -> Unit:
@@ -256,7 +276,7 @@ func _try_attack() -> void:
 
 func _spawn_attack_effect() -> void:
 	if effects_parent == null or not is_instance_valid(effects_parent):
-		target.take_damage(attack_power)
+		target.take_damage(attack_power, member_id)
 		return
 
 	var direction: Vector2 = global_position.direction_to(target.global_position)
@@ -273,14 +293,14 @@ func _spawn_slash_effect(direction: Vector2) -> void:
 	var slash := SLASH_EFFECT_SCENE.instantiate() as Area2D
 	effects_parent.add_child(slash)
 	slash.global_position = global_position
-	slash.call("setup", team_id, attack_power, direction, visual.color.lightened(0.35))
+	slash.call("setup", team_id, attack_power, direction, visual.color.lightened(0.35), member_id)
 
 
 func _spawn_projectile_effect(direction: Vector2) -> void:
 	var projectile := PROJECTILE_EFFECT_SCENE.instantiate() as Area2D
 	effects_parent.add_child(projectile)
 	projectile.global_position = global_position + direction * 24.0
-	projectile.call("setup", team_id, attack_power, direction, visual.color.lightened(0.25), target)
+	projectile.call("setup", team_id, attack_power, direction, visual.color.lightened(0.25), target, member_id)
 
 
 func _update_hp_bar() -> void:
@@ -304,7 +324,8 @@ func _update_name_label() -> void:
 		_:
 			role_suffix = "F"
 
-	name_label.text = "%s%s" % [unit_type_name.substr(0, 1), role_suffix]
+	var shown_name: String = display_name if display_name != "" else unit_type_name
+	name_label.text = "%s Lv%d %s" % [shown_name, member_level, role_suffix]
 
 
 func _die() -> void:

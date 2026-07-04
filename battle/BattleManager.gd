@@ -1,72 +1,161 @@
 extends Node
 
 const UNIT_SCENE := preload("res://units/Unit.tscn")
+const GUILD_STATE := preload("res://battle/GuildState.gd")
+const GUILD_SAVE_SERVICE := preload("res://battle/GuildSaveService.gd")
 
 const BLUE_TEAM_ID: int = 0
 const RED_TEAM_ID: int = 1
 const BLUE_COLOR: Color = Color(0.2, 0.45, 1.0)
 const RED_COLOR: Color = Color(1.0, 0.2, 0.18)
+const MAX_ACTIVE_MEMBERS: int = 3
+const TURNS_PER_YEAR: int = 4
+const GRADUATION_YEARS: int = 3
+const SAVE_VERSION: int = 1
+const SAVE_PATH: String = "user://guild_save.json"
+const CAMPAIGN_YEARS: int = 3
 
 const UNIT_DEFINITIONS: Array[Dictionary] = [
 	{
 		"name": "Warrior",
+		"display_name": "戦士",
 		"hp": 150,
 		"attack_power": 14,
 		"attack_range": 55.0,
 		"move_speed": 72.0,
+		"growth": {"hp": 14, "attack_power": 2, "attack_range": 1.0, "move_speed": 1.0},
 	},
 	{
 		"name": "Archer",
+		"display_name": "弓使い",
 		"hp": 85,
 		"attack_power": 11,
 		"attack_range": 155.0,
 		"move_speed": 84.0,
+		"growth": {"hp": 8, "attack_power": 2, "attack_range": 5.0, "move_speed": 2.0},
 	},
 	{
 		"name": "Rogue",
+		"display_name": "盗賊",
 		"hp": 100,
 		"attack_power": 18,
 		"attack_range": 45.0,
 		"move_speed": 118.0,
+		"growth": {"hp": 9, "attack_power": 3, "attack_range": 1.0, "move_speed": 4.0},
+	},
+	{
+		"name": "Mage",
+		"display_name": "魔術師",
+		"hp": 72,
+		"attack_power": 22,
+		"attack_range": 135.0,
+		"move_speed": 70.0,
+		"growth": {"hp": 6, "attack_power": 4, "attack_range": 4.0, "move_speed": 1.0},
+	},
+	{
+		"name": "Cleric",
+		"display_name": "神官",
+		"hp": 105,
+		"attack_power": 10,
+		"attack_range": 120.0,
+		"move_speed": 76.0,
+		"growth": {"hp": 11, "attack_power": 1, "attack_range": 3.0, "move_speed": 1.0},
 	},
 ]
 
 const TARGET_POLICIES: Array[Dictionary] = [
-	{"name": "Nearest", "value": 0},
-	{"name": "Low HP", "value": 1},
-	{"name": "High HP", "value": 2},
+	{"name": "Nearest", "display_name": "近い敵", "value": 0},
+	{"name": "Low HP", "display_name": "低HP", "value": 1},
+	{"name": "High HP", "display_name": "高HP", "value": 2},
 ]
 
 const FORMATION_ROLES: Array[Dictionary] = [
-	{"name": "Frontline", "value": 0},
-	{"name": "Backline", "value": 1},
-	{"name": "Flanker", "value": 2},
+	{"name": "Frontline", "display_name": "前衛", "value": 0},
+	{"name": "Backline", "display_name": "後衛", "value": 1},
+	{"name": "Flanker", "display_name": "遊撃", "value": 2},
+]
+
+const TRAIT_DEFINITIONS: Array[Dictionary] = [
+	{"name": "hard_worker", "display_name": "努力家", "xp_multiplier": 1.15},
+	{"name": "genius", "display_name": "天才肌", "xp_multiplier": 1.30},
+	{"name": "careful", "display_name": "慎重", "hp_bonus": 12, "attack_bonus": -1},
+	{"name": "clutch", "display_name": "勝負師", "attack_bonus": 3},
+	{"name": "swift", "display_name": "俊足", "speed_bonus": 14.0},
+	{"name": "frail", "display_name": "虚弱", "hp_bonus": -18, "xp_multiplier": 1.20},
+]
+
+const MISSION_DEFINITIONS: Array[Dictionary] = [
+	{"name": "hunt", "display_name": "討伐任務", "xp_multiplier": 1.25, "gold_multiplier": 1.00, "fame_multiplier": 1.00, "enemy_bonus": 0},
+	{"name": "escort", "display_name": "護衛任務", "xp_multiplier": 1.00, "gold_multiplier": 1.45, "fame_multiplier": 0.90, "enemy_bonus": 0},
+	{"name": "ruins", "display_name": "遺跡探索", "xp_multiplier": 1.10, "gold_multiplier": 1.10, "fame_multiplier": 1.45, "enemy_bonus": 1},
+]
+
+const GUILD_RANKS: Array[Dictionary] = [
+	{"name": "E", "threshold": 0, "recruit_bonus": 0, "enemy_bonus": 0},
+	{"name": "D", "threshold": 40, "recruit_bonus": 1, "enemy_bonus": 0},
+	{"name": "C", "threshold": 100, "recruit_bonus": 2, "enemy_bonus": 1},
+	{"name": "B", "threshold": 180, "recruit_bonus": 3, "enemy_bonus": 1},
+	{"name": "A", "threshold": 300, "recruit_bonus": 4, "enemy_bonus": 2},
+]
+
+const MEMBER_NAMES: Array[String] = [
+	"アルマ",
+	"ブラム",
+	"シエル",
+	"ドラン",
+	"エリーゼ",
+	"フェン",
+	"ギード",
+	"ヒルダ",
+	"イリス",
+	"ユノ",
 ]
 
 @onready var units_parent: Node2D = $"../Units"
 @onready var effects_parent: Node2D = $"../Effects"
 @onready var result_label: Label = $"../UI/ResultLabel"
 @onready var prep_panel: Control = $"../UI/PrepPanel"
-@onready var config_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/ConfigRows"
+@onready var config_rows: VBoxContainer = $"../UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows"
 @onready var start_button: Button = $"../UI/PrepPanel/MarginContainer/PrepContent/StartButton"
 @onready var return_button: Button = $"../UI/ReturnButton"
 
 var battle_finished: bool = false
-var blue_unit_choices: Array[int] = [0, 1, 2]
-var red_unit_choices: Array[int] = [0, 1, 2]
-var blue_target_choices: Array[int] = [0, 1, 2]
-var red_target_choices: Array[int] = [0, 1, 2]
-var blue_role_choices: Array[int] = [0, 1, 2]
-var red_role_choices: Array[int] = [0, 1, 2]
+var guild_name: String = "暁の旅団"
+var current_year: int = 1
+var current_turn: int = 1
+var fame: int = 0
+var gold: int = 120
+var completed_years: int = 0
+var current_year_wins: int = 0
+var current_year_losses: int = 0
+var total_battles: int = 0
+var tournament_wins: int = 0
+var graduated_count: int = 0
+var total_mvp_count: int = 0
+var highest_level_ever: int = 1
+var highest_level_member_name: String = ""
+var next_member_id: int = 1
+var current_battle_kind: String = "mission"
+var current_mission_index: int = 0
+var last_result_summary: String = "ようこそ、ギルドマスター。"
+var last_year_report: String = ""
+var final_report: String = ""
+var campaign_completed: bool = false
+var save_path: String = SAVE_PATH
+var guild_members: Array[Dictionary] = []
+var selected_member_indices: Array[int] = [0, 1, 2]
 var unit_buttons: Array[Button] = []
 var target_buttons: Array[Button] = []
 var role_buttons: Array[Button] = []
+var combat_stats: Dictionary = {}
+var current_participant_indices: Array[int] = []
+var last_mvp_member_id: int = -1
 
 
 func _ready() -> void:
 	start_button.pressed.connect(start_battle)
 	return_button.pressed.connect(_show_prep_screen)
-	_build_prep_rows()
+	_create_initial_roster()
 	_show_prep_screen()
 
 
@@ -78,6 +167,13 @@ func _process(_delta: float) -> void:
 
 
 func start_battle() -> void:
+	if guild_members.is_empty():
+		return
+
+	current_battle_kind = "tournament" if current_turn == TURNS_PER_YEAR else "mission"
+	current_participant_indices.clear()
+	combat_stats.clear()
+	last_mvp_member_id = -1
 	battle_finished = false
 	prep_panel.visible = false
 	return_button.visible = false
@@ -96,25 +192,18 @@ func start_battle() -> void:
 		Vector2(250.0, 80.0),
 	]
 
-	for index: int in blue_positions.size():
-		_spawn_unit(
-			BLUE_TEAM_ID,
-			BLUE_COLOR,
-			blue_positions[index],
-			blue_unit_choices[index],
-			blue_target_choices[index],
-			blue_role_choices[index]
-		)
+	_normalize_selected_members()
+	for index: int in MAX_ACTIVE_MEMBERS:
+		var member: Dictionary = guild_members[selected_member_indices[index]]
+		current_participant_indices.append(selected_member_indices[index])
+		_prepare_combat_stat(member)
+		_spawn_member_unit(member, BLUE_TEAM_ID, BLUE_COLOR, blue_positions[index])
 
+	var enemy_level: int = _get_enemy_level()
 	for index: int in red_positions.size():
-		_spawn_unit(
-			RED_TEAM_ID,
-			RED_COLOR,
-			red_positions[index],
-			red_unit_choices[index],
-			red_target_choices[index],
-			red_role_choices[index]
-		)
+		var enemy: Dictionary = _create_enemy_member(index, enemy_level)
+		_prepare_combat_stat(enemy)
+		_spawn_member_unit(enemy, RED_TEAM_ID, RED_COLOR, red_positions[index])
 
 
 func _show_prep_screen() -> void:
@@ -124,8 +213,48 @@ func _show_prep_screen() -> void:
 	result_label.text = ""
 	_clear_units()
 	_clear_effects()
-	_refresh_prep_buttons()
+	_build_prep_rows()
+	start_button.text = "大会に出場" if current_turn == TURNS_PER_YEAR else "任務開始"
 	start_button.grab_focus()
+
+
+func _create_initial_roster() -> void:
+	if not guild_members.is_empty():
+		return
+
+	for index: int in 6:
+		guild_members.append(_create_guild_member(index % UNIT_DEFINITIONS.size(), index))
+
+
+func _create_guild_member(class_index: int, seed_index: int) -> Dictionary:
+	var class_data: Dictionary = UNIT_DEFINITIONS[class_index]
+	var member_name: String = MEMBER_NAMES[(next_member_id - 1) % MEMBER_NAMES.size()]
+	var rank_bonus: int = _get_current_rank()["recruit_bonus"]
+	var trait_index: int = (next_member_id + seed_index - 1) % TRAIT_DEFINITIONS.size()
+	var member := {
+		"id": next_member_id,
+		"name": member_name,
+		"class_index": class_index,
+		"trait_index": trait_index,
+		"level": 1,
+		"xp": 0,
+		"years_in_guild": 1,
+		"hp": int(class_data["hp"]) + rank_bonus * 4,
+		"attack_power": int(class_data["attack_power"]) + rank_bonus,
+		"attack_range": class_data["attack_range"],
+		"move_speed": float(class_data["move_speed"]) + float(rank_bonus),
+		"target_policy": seed_index % TARGET_POLICIES.size(),
+		"formation_role": seed_index % FORMATION_ROLES.size(),
+		"battles": 0,
+		"wins": 0,
+		"mvp_count": 0,
+		"total_damage_dealt": 0,
+		"total_damage_taken": 0,
+		"total_kos": 0,
+	}
+	_apply_trait_base_bonus(member)
+	next_member_id += 1
+	return member
 
 
 func _build_prep_rows() -> void:
@@ -135,126 +264,353 @@ func _build_prep_rows() -> void:
 	unit_buttons.clear()
 	target_buttons.clear()
 	role_buttons.clear()
+	_normalize_selected_members()
 
-	_add_team_header("Blue Team")
-	for slot_index: int in 3:
-		_add_config_row(BLUE_TEAM_ID, slot_index)
+	var rank_data: Dictionary = _get_current_rank()
+	_add_title("%s  ランク%s  %d年目 %dターン  名声 %d  所持金 %d" % [
+		guild_name,
+		rank_data["name"],
+		current_year,
+		current_turn,
+		fame,
+		gold,
+	])
+	_add_note("成績: %d年目 %d勝%d敗  通算戦闘 %d  大会優勝 %d  卒業生 %d" % [
+		current_year,
+		current_year_wins,
+		current_year_losses,
+		total_battles,
+		tournament_wins,
+		graduated_count,
+	])
+	if current_turn != TURNS_PER_YEAR:
+		var mission: Dictionary = _get_current_mission()
+		_add_note("現在の任務: %s  経験x%.2f 所持金x%.2f 名声x%.2f" % [
+			mission["display_name"],
+			mission["xp_multiplier"],
+			mission["gold_multiplier"],
+			mission["fame_multiplier"],
+		])
+	_add_note(last_result_summary)
+	if last_year_report != "":
+		_add_note(last_year_report)
+	if final_report != "":
+		_add_note(final_report)
+	_add_section_header("出撃メンバー")
+	for slot_index: int in MAX_ACTIVE_MEMBERS:
+		_add_party_row(slot_index)
 
-	_add_team_header("Red Team")
-	for slot_index: int in 3:
-		_add_config_row(RED_TEAM_ID, slot_index)
+	_add_section_header("所属メンバー")
+	for member_index: int in guild_members.size():
+		_add_member_summary(member_index)
 
-	_refresh_prep_buttons()
+	_add_section_header("ギルド活動")
+	_add_action_row()
 
 
-func _add_team_header(text: String) -> void:
+func _add_title(text: String) -> void:
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 22)
 	config_rows.add_child(label)
 
 
-func _add_config_row(team_id: int, slot_index: int) -> void:
+func _add_note(text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(0.0, 38.0)
+	config_rows.add_child(label)
+
+
+func _add_section_header(text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 18)
+	config_rows.add_child(label)
+
+
+func _add_party_row(slot_index: int) -> void:
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0.0, 38.0)
+	row.custom_minimum_size = Vector2(0.0, 36.0)
 	config_rows.add_child(row)
 
 	var slot_label := Label.new()
-	slot_label.custom_minimum_size = Vector2(92.0, 0.0)
-	slot_label.text = "%s %d" % ["Blue" if team_id == BLUE_TEAM_ID else "Red", slot_index + 1]
+	slot_label.custom_minimum_size = Vector2(72.0, 0.0)
+	slot_label.text = "枠 %d" % (slot_index + 1)
 	row.add_child(slot_label)
 
-	var unit_button := Button.new()
-	unit_button.custom_minimum_size = Vector2(180.0, 0.0)
-	unit_button.focus_mode = Control.FOCUS_ALL
-	unit_button.pressed.connect(_cycle_unit_choice.bind(team_id, slot_index))
-	row.add_child(unit_button)
-	unit_buttons.append(unit_button)
+	var member_button := Button.new()
+	member_button.custom_minimum_size = Vector2(250.0, 0.0)
+	member_button.focus_mode = Control.FOCUS_ALL
+	member_button.pressed.connect(_cycle_selected_member.bind(slot_index))
+	row.add_child(member_button)
+	unit_buttons.append(member_button)
 
 	var target_button := Button.new()
-	target_button.custom_minimum_size = Vector2(180.0, 0.0)
+	target_button.custom_minimum_size = Vector2(150.0, 0.0)
 	target_button.focus_mode = Control.FOCUS_ALL
-	target_button.pressed.connect(_cycle_target_choice.bind(team_id, slot_index))
+	target_button.pressed.connect(_cycle_target_choice.bind(slot_index))
 	row.add_child(target_button)
 	target_buttons.append(target_button)
 
 	var role_button := Button.new()
 	role_button.custom_minimum_size = Vector2(132.0, 0.0)
 	role_button.focus_mode = Control.FOCUS_ALL
-	role_button.pressed.connect(_cycle_role_choice.bind(team_id, slot_index))
+	role_button.pressed.connect(_cycle_role_choice.bind(slot_index))
 	row.add_child(role_button)
 	role_buttons.append(role_button)
 
-
-func _cycle_unit_choice(team_id: int, slot_index: int) -> void:
-	var choices: Array[int] = blue_unit_choices if team_id == BLUE_TEAM_ID else red_unit_choices
-	choices[slot_index] = (choices[slot_index] + 1) % UNIT_DEFINITIONS.size()
-	_refresh_prep_buttons()
+	_refresh_party_row(slot_index)
 
 
-func _cycle_target_choice(team_id: int, slot_index: int) -> void:
-	var choices: Array[int] = blue_target_choices if team_id == BLUE_TEAM_ID else red_target_choices
-	choices[slot_index] = (choices[slot_index] + 1) % TARGET_POLICIES.size()
-	_refresh_prep_buttons()
+func _add_member_summary(member_index: int) -> void:
+	var member: Dictionary = guild_members[member_index]
+	_ensure_member_defaults(member)
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	var trait_data: Dictionary = _get_member_trait(member)
+	var label := Label.new()
+	label.text = "%s  Lv%d %s/%s  HP:%d 攻撃:%d 射程:%d 速度:%d  経験:%d/%d  在籍:%d年  MVP:%d" % [
+		member["name"],
+		member["level"],
+		class_data["display_name"],
+		trait_data["display_name"],
+		member["hp"],
+		member["attack_power"],
+		int(member["attack_range"]),
+		int(member["move_speed"]),
+		member["xp"],
+		_get_xp_to_next(member),
+		member["years_in_guild"],
+		member.get("mvp_count", 0),
+	]
+	config_rows.add_child(label)
 
 
-func _cycle_role_choice(team_id: int, slot_index: int) -> void:
-	var choices: Array[int] = blue_role_choices if team_id == BLUE_TEAM_ID else red_role_choices
-	choices[slot_index] = (choices[slot_index] + 1) % FORMATION_ROLES.size()
-	_refresh_prep_buttons()
+func _add_action_row() -> void:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0.0, 42.0)
+	config_rows.add_child(row)
+	var tournament_turn: bool = current_turn == TURNS_PER_YEAR
+
+	var drill_button := Button.new()
+	drill_button.text = "攻撃訓練"
+	drill_button.custom_minimum_size = Vector2(160.0, 0.0)
+	drill_button.focus_mode = Control.FOCUS_ALL
+	drill_button.disabled = tournament_turn
+	drill_button.pressed.connect(_train_guild.bind("drill"))
+	row.add_child(drill_button)
+
+	var endurance_button := Button.new()
+	endurance_button.text = "耐久訓練"
+	endurance_button.custom_minimum_size = Vector2(160.0, 0.0)
+	endurance_button.focus_mode = Control.FOCUS_ALL
+	endurance_button.disabled = tournament_turn
+	endurance_button.pressed.connect(_train_guild.bind("endurance"))
+	row.add_child(endurance_button)
+
+	var tactics_button := Button.new()
+	tactics_button.text = "戦術訓練"
+	tactics_button.custom_minimum_size = Vector2(160.0, 0.0)
+	tactics_button.focus_mode = Control.FOCUS_ALL
+	tactics_button.disabled = tournament_turn
+	tactics_button.pressed.connect(_train_guild.bind("tactics"))
+	row.add_child(tactics_button)
+
+	var mission_button := Button.new()
+	mission_button.text = "任務: %s" % _get_current_mission()["display_name"]
+	mission_button.custom_minimum_size = Vector2(170.0, 0.0)
+	mission_button.focus_mode = Control.FOCUS_ALL
+	mission_button.disabled = tournament_turn
+	mission_button.pressed.connect(_cycle_mission)
+	row.add_child(mission_button)
+
+	var save_button := Button.new()
+	save_button.text = "保存"
+	save_button.custom_minimum_size = Vector2(110.0, 0.0)
+	save_button.focus_mode = Control.FOCUS_ALL
+	save_button.pressed.connect(save_game)
+	row.add_child(save_button)
+
+	var load_button := Button.new()
+	load_button.text = "読込"
+	load_button.custom_minimum_size = Vector2(110.0, 0.0)
+	load_button.focus_mode = Control.FOCUS_ALL
+	load_button.pressed.connect(load_game)
+	row.add_child(load_button)
 
 
-func _refresh_prep_buttons() -> void:
-	var button_index: int = 0
-
-	for slot_index: int in 3:
-		_update_config_buttons(
-			button_index,
-			blue_unit_choices[slot_index],
-			blue_target_choices[slot_index],
-			blue_role_choices[slot_index]
-		)
-		button_index += 1
-
-	for slot_index: int in 3:
-		_update_config_buttons(
-			button_index,
-			red_unit_choices[slot_index],
-			red_target_choices[slot_index],
-			red_role_choices[slot_index]
-		)
-		button_index += 1
-
-
-func _update_config_buttons(button_index: int, unit_index: int, target_index: int, role_index: int) -> void:
-	if button_index >= unit_buttons.size() or button_index >= target_buttons.size() or button_index >= role_buttons.size():
+func _refresh_party_row(slot_index: int) -> void:
+	if slot_index >= unit_buttons.size():
 		return
 
-	var unit_data: Dictionary = UNIT_DEFINITIONS[unit_index]
-	var target_data: Dictionary = TARGET_POLICIES[target_index]
-	var role_data: Dictionary = FORMATION_ROLES[role_index]
-	unit_buttons[button_index].text = "%s  HP:%d ATK:%d RNG:%d SPD:%d" % [
-		unit_data["name"],
-		unit_data["hp"],
-		unit_data["attack_power"],
-		int(unit_data["attack_range"]),
-		int(unit_data["move_speed"]),
-	]
-	target_buttons[button_index].text = "Target: %s" % target_data["name"]
-	role_buttons[button_index].text = "Role: %s" % role_data["name"]
+	var member: Dictionary = guild_members[selected_member_indices[slot_index]]
+	_ensure_member_defaults(member)
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	var target_data: Dictionary = TARGET_POLICIES[member["target_policy"]]
+	var role_data: Dictionary = FORMATION_ROLES[member["formation_role"]]
+	unit_buttons[slot_index].text = "%s  Lv%d %s" % [member["name"], member["level"], class_data["display_name"]]
+	target_buttons[slot_index].text = "狙い: %s" % target_data["display_name"]
+	role_buttons[slot_index].text = "役割: %s" % role_data["display_name"]
 
 
-func _spawn_unit(
-	team_id: int,
-	color: Color,
-	spawn_position: Vector2,
-	unit_definition_index: int,
-	target_policy_index: int,
-	formation_role_index: int
-) -> void:
-	var unit_data: Dictionary = UNIT_DEFINITIONS[unit_definition_index]
-	var target_data: Dictionary = TARGET_POLICIES[target_policy_index]
-	var role_data: Dictionary = FORMATION_ROLES[formation_role_index]
+func _cycle_selected_member(slot_index: int) -> void:
+	if guild_members.size() <= 1:
+		return
+
+	var next_index: int = selected_member_indices[slot_index]
+	for _attempt: int in guild_members.size():
+		next_index = (next_index + 1) % guild_members.size()
+		if not selected_member_indices.has(next_index):
+			selected_member_indices[slot_index] = next_index
+			break
+
+	_build_prep_rows()
+
+
+func _cycle_target_choice(slot_index: int) -> void:
+	var member: Dictionary = guild_members[selected_member_indices[slot_index]]
+	member["target_policy"] = (int(member["target_policy"]) + 1) % TARGET_POLICIES.size()
+	_build_prep_rows()
+
+
+func _cycle_role_choice(slot_index: int) -> void:
+	var member: Dictionary = guild_members[selected_member_indices[slot_index]]
+	member["formation_role"] = (int(member["formation_role"]) + 1) % FORMATION_ROLES.size()
+	_build_prep_rows()
+
+
+func _cycle_mission() -> void:
+	current_mission_index = (current_mission_index + 1) % MISSION_DEFINITIONS.size()
+	_build_prep_rows()
+
+
+func _train_guild(training_type: String) -> void:
+	for index: int in guild_members.size():
+		var member: Dictionary = guild_members[index]
+		match training_type:
+			"endurance":
+				member["hp"] = int(member["hp"]) + 4
+				_award_member_xp(index, 8)
+			"tactics":
+				member["attack_range"] = float(member["attack_range"]) + 1.5
+				member["move_speed"] = float(member["move_speed"]) + 0.5
+				_award_member_xp(index, 8)
+			_:
+				member["attack_power"] = int(member["attack_power"]) + 1
+				_award_member_xp(index, 8)
+
+	gold = max(0, gold - 10)
+	last_result_summary = "%sを行いました。全員が経験値を獲得しました。" % _get_training_display_name(training_type)
+	_advance_calendar()
+	_show_prep_screen()
+
+
+func _get_training_display_name(training_type: String) -> String:
+	match training_type:
+		"endurance":
+			return "耐久訓練"
+		"tactics":
+			return "戦術訓練"
+		_:
+			return "攻撃訓練"
+
+
+func _get_current_mission() -> Dictionary:
+	if current_mission_index < 0 or current_mission_index >= MISSION_DEFINITIONS.size():
+		current_mission_index = 0
+	return MISSION_DEFINITIONS[current_mission_index]
+
+
+func _get_current_rank() -> Dictionary:
+	var current_rank: Dictionary = GUILD_RANKS[0]
+	for rank: Dictionary in GUILD_RANKS:
+		if fame >= int(rank["threshold"]):
+			current_rank = rank
+	return current_rank
+
+
+func _get_member_trait(member: Dictionary) -> Dictionary:
+	var trait_index: int = int(member.get("trait_index", 0))
+	if trait_index < 0 or trait_index >= TRAIT_DEFINITIONS.size():
+		trait_index = 0
+	return TRAIT_DEFINITIONS[trait_index]
+
+
+func _apply_trait_base_bonus(member: Dictionary) -> void:
+	var trait_data: Dictionary = _get_member_trait(member)
+	member["hp"] = max(1, int(member["hp"]) + int(trait_data.get("hp_bonus", 0)))
+	member["attack_power"] = max(1, int(member["attack_power"]) + int(trait_data.get("attack_bonus", 0)))
+	member["move_speed"] = max(20.0, float(member["move_speed"]) + float(trait_data.get("speed_bonus", 0.0)))
+
+
+func _apply_trait_xp(member: Dictionary, base_amount: int) -> int:
+	var trait_data: Dictionary = _get_member_trait(member)
+	return max(1, int(round(float(base_amount) * float(trait_data.get("xp_multiplier", 1.0)))))
+
+
+func _prepare_combat_stat(member: Dictionary) -> void:
+	var member_id: int = int(member.get("id", -1))
+	if member_id == -1:
+		return
+
+	combat_stats[member_id] = {
+		"damage_dealt": 0,
+		"damage_taken": 0,
+		"kos": 0,
+		"survived": false,
+	}
+
+
+func _mark_survivors() -> void:
+	for node: Node in get_tree().get_nodes_in_group("units"):
+		var member_id: int = int(node.get("member_id"))
+		if combat_stats.has(member_id) and not bool(node.get("is_dead")):
+			var stats: Dictionary = combat_stats[member_id]
+			stats["survived"] = true
+
+
+func _select_mvp_member_index() -> int:
+	var selected_index: int = -1
+	var best_score: int = -1
+
+	for member_index: int in current_participant_indices:
+		if member_index < 0 or member_index >= guild_members.size():
+			continue
+
+		var member: Dictionary = guild_members[member_index]
+		var stats: Dictionary = combat_stats.get(member["id"], {})
+		var score: int = int(stats.get("damage_dealt", 0)) + int(stats.get("kos", 0)) * 40
+		if bool(stats.get("survived", false)):
+			score += 20
+		if selected_index == -1 or score > best_score:
+			selected_index = member_index
+			best_score = score
+
+	return selected_index
+
+
+func _apply_member_battle_stats(member: Dictionary) -> void:
+	_ensure_member_defaults(member)
+	var stats: Dictionary = combat_stats.get(member["id"], {})
+	member["total_damage_dealt"] = int(member.get("total_damage_dealt", 0)) + int(stats.get("damage_dealt", 0))
+	member["total_damage_taken"] = int(member.get("total_damage_taken", 0)) + int(stats.get("damage_taken", 0))
+	member["total_kos"] = int(member.get("total_kos", 0)) + int(stats.get("kos", 0))
+
+
+func _ensure_member_defaults(member: Dictionary) -> void:
+	member["trait_index"] = int(member.get("trait_index", 0))
+	member["mvp_count"] = int(member.get("mvp_count", 0))
+	member["total_damage_dealt"] = int(member.get("total_damage_dealt", 0))
+	member["total_damage_taken"] = int(member.get("total_damage_taken", 0))
+	member["total_kos"] = int(member.get("total_kos", 0))
+	member["battles"] = int(member.get("battles", 0))
+	member["wins"] = int(member.get("wins", 0))
+
+
+func _spawn_member_unit(member: Dictionary, team_id: int, color: Color, spawn_position: Vector2) -> void:
+	_ensure_member_defaults(member)
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
 	var unit := UNIT_SCENE.instantiate() as CharacterBody2D
 
 	units_parent.add_child(unit)
@@ -263,16 +619,48 @@ func _spawn_unit(
 		"setup",
 		team_id,
 		color,
-		unit_data["name"],
-		target_data["value"],
-		role_data["value"],
-		unit_data["hp"],
-		unit_data["attack_power"],
-		unit_data["attack_range"],
-		unit_data["move_speed"],
-		effects_parent
+		class_data["name"],
+		member["target_policy"],
+		member["formation_role"],
+		member["hp"],
+		member["attack_power"],
+		member["attack_range"],
+		member["move_speed"],
+		effects_parent,
+		member["name"],
+		member["level"],
+		member.get("id", -1),
+		self
 	)
 	unit.reset_physics_interpolation()
+
+
+func _create_enemy_member(slot_index: int, enemy_level: int) -> Dictionary:
+	var class_index: int = (slot_index + current_year + current_turn) % UNIT_DEFINITIONS.size()
+	var class_data: Dictionary = UNIT_DEFINITIONS[class_index]
+	var scale: int = max(0, enemy_level - 1)
+	return {
+		"id": -100 - slot_index,
+		"name": "ライバル%d" % (slot_index + 1),
+		"class_index": class_index,
+		"level": enemy_level,
+		"hp": int(class_data["hp"]) + scale * 10,
+		"attack_power": int(class_data["attack_power"]) + scale * 2,
+		"attack_range": float(class_data["attack_range"]) + scale * 2.0,
+		"move_speed": float(class_data["move_speed"]) + scale * 1.5,
+		"target_policy": slot_index % TARGET_POLICIES.size(),
+		"formation_role": slot_index % FORMATION_ROLES.size(),
+	}
+
+
+func _get_enemy_level() -> int:
+	var level: int = current_year + int(floor(float(fame) / 30.0))
+	if current_battle_kind == "tournament":
+		level += 1
+	else:
+		level += int(_get_current_mission()["enemy_bonus"])
+	level += int(_get_current_rank()["enemy_bonus"])
+	return max(1, level)
 
 
 func _clear_units() -> void:
@@ -290,9 +678,9 @@ func _check_battle_result() -> void:
 	var red_alive: int = _count_alive_units(RED_TEAM_ID)
 
 	if blue_alive == 0:
-		_finish_battle("Red Team Wins!")
+		_finish_battle("赤チーム勝利！", false)
 	elif red_alive == 0:
-		_finish_battle("Blue Team Wins!")
+		_finish_battle("青チーム勝利！", true)
 
 
 func _count_alive_units(team_id: int) -> int:
@@ -305,8 +693,299 @@ func _count_alive_units(team_id: int) -> int:
 	return count
 
 
-func _finish_battle(message: String) -> void:
+func _finish_battle(message: String, blue_won: bool) -> void:
 	battle_finished = true
 	result_label.text = message
 	return_button.visible = true
+	_apply_battle_rewards(blue_won)
 	print("BATTLE_RESULT %s" % message)
+
+
+func record_combat_hit(attacker_member_id: int, defender_member_id: int, damage: int, killed: bool) -> void:
+	if combat_stats.has(attacker_member_id):
+		var attacker_stats: Dictionary = combat_stats[attacker_member_id]
+		attacker_stats["damage_dealt"] = int(attacker_stats["damage_dealt"]) + damage
+		if killed:
+			attacker_stats["kos"] = int(attacker_stats["kos"]) + 1
+
+	if combat_stats.has(defender_member_id):
+		var defender_stats: Dictionary = combat_stats[defender_member_id]
+		defender_stats["damage_taken"] = int(defender_stats["damage_taken"]) + damage
+
+
+func _apply_battle_rewards(blue_won: bool) -> void:
+	_mark_survivors()
+	var battle_report_lines: Array[String] = []
+	var base_xp: int = 36 if current_battle_kind == "tournament" else 24
+	var win_xp: int = 18 if blue_won else 6
+	var fame_gain: int = 12 if blue_won else 3
+	var gold_gain: int = 35 if blue_won else 12
+	if current_battle_kind == "tournament":
+		fame_gain *= 2
+		gold_gain *= 2
+		if blue_won:
+			tournament_wins += 1
+	else:
+		var mission: Dictionary = _get_current_mission()
+		base_xp = int(round(float(base_xp) * float(mission["xp_multiplier"])))
+		fame_gain = int(round(float(fame_gain) * float(mission["fame_multiplier"])))
+		gold_gain = int(round(float(gold_gain) * float(mission["gold_multiplier"])))
+
+	var mvp_index: int = _select_mvp_member_index()
+	var mvp_name: String = "なし"
+
+	for member_index: int in current_participant_indices:
+		if member_index < 0 or member_index >= guild_members.size():
+			continue
+		var member: Dictionary = guild_members[member_index]
+		var before_level: int = int(member["level"])
+		var earned_xp: int = _apply_trait_xp(member, base_xp + win_xp)
+		member["battles"] = int(member["battles"]) + 1
+		if blue_won:
+			member["wins"] = int(member["wins"]) + 1
+		_award_member_xp(member_index, earned_xp)
+		_apply_member_battle_stats(member)
+		var stats: Dictionary = combat_stats.get(member["id"], {})
+		battle_report_lines.append("%s 経験+%d Lv%d→%d 与%d 被%d 撃破%d" % [
+			member["name"],
+			earned_xp,
+			before_level,
+			member["level"],
+			stats.get("damage_dealt", 0),
+			stats.get("damage_taken", 0),
+			stats.get("kos", 0),
+		])
+		if member_index == mvp_index:
+			member["mvp_count"] = int(member.get("mvp_count", 0)) + 1
+			total_mvp_count += 1
+			mvp_name = member["name"]
+			last_mvp_member_id = int(member["id"])
+
+	fame += fame_gain
+	gold += gold_gain
+	total_battles += 1
+	if blue_won:
+		current_year_wins += 1
+	else:
+		current_year_losses += 1
+	var rank_text: String = _get_current_rank()["name"]
+	last_result_summary = "%s完了。%s 名声 +%d、所持金 +%d。MVP: %s。ランク%s\n%s" % [
+		"大会" if current_battle_kind == "tournament" else "任務",
+		"勝利！" if blue_won else "敗北。",
+		fame_gain,
+		gold_gain,
+		mvp_name,
+		rank_text,
+		"\n".join(battle_report_lines),
+	]
+	_advance_calendar()
+
+
+func _award_member_xp(member_index: int, amount: int) -> void:
+	if member_index < 0 or member_index >= guild_members.size():
+		return
+
+	var member: Dictionary = guild_members[member_index]
+	member["xp"] = int(member["xp"]) + amount
+	while int(member["xp"]) >= _get_xp_to_next(member):
+		member["xp"] = int(member["xp"]) - _get_xp_to_next(member)
+		_level_up_member(member)
+
+
+func _level_up_member(member: Dictionary) -> void:
+	member["level"] = int(member["level"]) + 1
+	if int(member["level"]) > highest_level_ever:
+		highest_level_ever = int(member["level"])
+		highest_level_member_name = str(member["name"])
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	var growth: Dictionary = class_data["growth"]
+	var trait_data: Dictionary = _get_member_trait(member)
+	member["hp"] = int(member["hp"]) + int(growth["hp"]) + int(trait_data.get("level_hp_bonus", 0))
+	member["attack_power"] = int(member["attack_power"]) + int(growth["attack_power"]) + int(trait_data.get("level_attack_bonus", 0))
+	member["attack_range"] = float(member["attack_range"]) + float(growth["attack_range"])
+	member["move_speed"] = float(member["move_speed"]) + float(growth["move_speed"]) + float(trait_data.get("level_speed_bonus", 0.0))
+
+
+func _get_xp_to_next(member: Dictionary) -> int:
+	return 40 + int(member["level"]) * 12
+
+
+func _advance_calendar() -> void:
+	current_turn += 1
+	if current_turn <= TURNS_PER_YEAR:
+		return
+
+	var finished_year: int = current_year
+	var wins: int = current_year_wins
+	var losses: int = current_year_losses
+	current_turn = 1
+	current_year += 1
+	completed_years += 1
+	_process_year_end(finished_year, wins, losses)
+
+
+func _process_year_end(finished_year: int, wins: int, losses: int) -> void:
+	for member: Dictionary in guild_members:
+		member["years_in_guild"] = int(member["years_in_guild"]) + 1
+
+	var graduates: Array[String] = []
+	for index: int in range(guild_members.size() - 1, -1, -1):
+		var member: Dictionary = guild_members[index]
+		if int(member["years_in_guild"]) > GRADUATION_YEARS:
+			graduates.append(member["name"])
+			guild_members.remove_at(index)
+
+	graduated_count += graduates.size()
+	var recruited_names: Array[String] = []
+	while guild_members.size() < 6:
+		var recruit: Dictionary = _create_guild_member((next_member_id - 1) % UNIT_DEFINITIONS.size(), next_member_id)
+		recruited_names.append(recruit["name"])
+		guild_members.append(recruit)
+
+	_normalize_selected_members()
+	last_result_summary += " %d年目は%d勝%d敗で終了。" % [finished_year, wins, losses]
+	if not graduates.is_empty():
+		last_result_summary += " 卒業: %s。新人が加入しました。" % "、".join(graduates)
+	else:
+		last_result_summary += " 新しい一年が始まります。"
+	last_year_report = _build_year_report(finished_year, wins, losses, graduates, recruited_names)
+	if completed_years >= CAMPAIGN_YEARS:
+		campaign_completed = true
+		final_report = _build_final_report()
+	current_year_wins = 0
+	current_year_losses = 0
+
+
+func _build_year_report(finished_year: int, wins: int, losses: int, graduates: Array[String], recruited_names: Array[String]) -> String:
+	var graduate_text: String = "なし" if graduates.is_empty() else "、".join(graduates)
+	var recruit_text: String = "なし" if recruited_names.is_empty() else "、".join(recruited_names)
+	return "年度末レポート: %d年目 %d勝%d敗 / ギルドランク%s / 卒業 %s / 新人 %s" % [
+		finished_year,
+		wins,
+		losses,
+		_get_current_rank()["name"],
+		graduate_text,
+		recruit_text,
+	]
+
+
+func _build_final_report() -> String:
+	for member: Dictionary in guild_members:
+		_ensure_member_defaults(member)
+		if int(member["level"]) > highest_level_ever:
+			highest_level_ever = int(member["level"])
+			highest_level_member_name = str(member["name"])
+
+	var top_member: String = "なし" if highest_level_member_name == "" else highest_level_member_name
+
+	return "3年終了レポート: 通算戦闘 %d / 大会優勝 %d / 最高Lv %d(%s) / MVP回数 %d / 卒業生 %d / 最終ランク%s" % [
+		total_battles,
+		tournament_wins,
+		highest_level_ever,
+		top_member,
+		total_mvp_count,
+		graduated_count,
+		_get_current_rank()["name"],
+	]
+
+
+func _normalize_selected_members() -> void:
+	if guild_members.is_empty():
+		selected_member_indices.clear()
+		return
+
+	while selected_member_indices.size() < MAX_ACTIVE_MEMBERS:
+		selected_member_indices.append(0)
+
+	for slot_index: int in MAX_ACTIVE_MEMBERS:
+		if selected_member_indices[slot_index] < 0 or selected_member_indices[slot_index] >= guild_members.size():
+			selected_member_indices[slot_index] = min(slot_index, guild_members.size() - 1)
+
+	var used: Array[int] = []
+	for slot_index: int in MAX_ACTIVE_MEMBERS:
+		var selected_index: int = selected_member_indices[slot_index]
+		if not used.has(selected_index):
+			used.append(selected_index)
+			continue
+
+		for candidate_index: int in guild_members.size():
+			if not used.has(candidate_index):
+				selected_member_indices[slot_index] = candidate_index
+				used.append(candidate_index)
+				break
+
+
+func get_roster_snapshot() -> Array[Dictionary]:
+	var snapshot: Array[Dictionary] = []
+	for member: Dictionary in guild_members:
+		_ensure_member_defaults(member)
+		snapshot.append(member.duplicate(true))
+	return snapshot
+
+
+func get_game_snapshot() -> Dictionary:
+	return GUILD_STATE.build_snapshot(self, selected_member_indices, get_roster_snapshot())
+
+
+func get_beta_status() -> Dictionary:
+	return {
+		"trait_count": TRAIT_DEFINITIONS.size(),
+		"mission_count": MISSION_DEFINITIONS.size(),
+		"guild_rank": _get_current_rank()["name"],
+		"campaign_completed": campaign_completed,
+		"final_report": final_report,
+		"last_result_summary": last_result_summary,
+		"last_year_report": last_year_report,
+		"last_mvp_member_id": last_mvp_member_id,
+		"completed_years": completed_years,
+		"total_battles": total_battles,
+		"tournament_wins": tournament_wins,
+		"graduated_count": graduated_count,
+		"total_mvp_count": total_mvp_count,
+		"highest_level_ever": highest_level_ever,
+		"highest_level_member_name": highest_level_member_name,
+	}
+
+
+func save_game() -> void:
+	var payload: Dictionary = get_game_snapshot()
+	payload["version"] = SAVE_VERSION
+
+	var result: Dictionary = GUILD_SAVE_SERVICE.save_json(save_path, payload)
+	if not bool(result["ok"]):
+		push_error(result["error"])
+		last_result_summary = "保存に失敗しました。"
+		_show_prep_screen()
+		return
+
+	last_result_summary = "ギルドを保存しました。"
+	_show_prep_screen()
+
+
+func load_game() -> void:
+	var result: Dictionary = GUILD_SAVE_SERVICE.load_json(save_path)
+	if not bool(result["ok"]):
+		if str(result["error"]) != "No save file found.":
+			push_error(result["error"])
+		last_result_summary = "セーブデータがありません。" if str(result["error"]) == "No save file found." else "読込に失敗しました。"
+		_show_prep_screen()
+		return
+
+	_apply_save_data(result["data"])
+	last_result_summary = "ギルドを読み込みました。"
+	_show_prep_screen()
+
+
+func _apply_save_data(data: Dictionary) -> void:
+	GUILD_STATE.apply_scalar_data(self, data)
+	selected_member_indices.clear()
+	for value: Variant in data.get("selected_member_indices", [0, 1, 2]):
+		selected_member_indices.append(int(value))
+
+	guild_members.clear()
+	for value: Variant in data.get("guild_members", []):
+		if typeof(value) == TYPE_DICTIONARY:
+			var member: Dictionary = (value as Dictionary).duplicate(true)
+			_ensure_member_defaults(member)
+			guild_members.append(member)
+	_normalize_selected_members()

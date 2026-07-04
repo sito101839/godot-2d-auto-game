@@ -65,11 +65,16 @@ theme_override_constants/separation = 12
 [node name="TitleLabel" type="Label" parent="UI/PrepPanel/MarginContainer/PrepContent"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 30
-text = "Auto Battle Setup"
+text = "ギルドホール"
 horizontal_alignment = 1
 
-[node name="ConfigRows" type="VBoxContainer" parent="UI/PrepPanel/MarginContainer/PrepContent"]
+[node name="RosterScroll" type="ScrollContainer" parent="UI/PrepPanel/MarginContainer/PrepContent"]
 layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ConfigRows" type="VBoxContainer" parent="UI/PrepPanel/MarginContainer/PrepContent/RosterScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
@@ -77,7 +82,7 @@ theme_override_constants/separation = 6
 layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 focus_mode = 2
-text = "Start Battle"
+text = "任務開始"
 
 [node name="ReturnButton" type="Button" parent="UI"]
 visible = false
@@ -86,7 +91,7 @@ offset_top = 100.0
 offset_right = 752.0
 offset_bottom = 148.0
 focus_mode = 2
-text = "Back to Setup"
+text = "ギルドへ戻る"
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, 0)
