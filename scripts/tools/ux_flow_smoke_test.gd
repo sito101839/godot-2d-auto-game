@@ -100,6 +100,13 @@ func _run() -> void:
 		_fail(battle)
 		return
 
+	var preview_panel := _find_latest_named(config_rows, "SelectedMemberPreviewPanel")
+	var preview_text := _collect_label_text(preview_panel)
+	if preview_panel == null or not preview_text.contains("HP") or not preview_text.contains("EXP"):
+		push_error("Expected selected member preview to show formation stat details, got: %s" % preview_text)
+		_fail(battle)
+		return
+
 	manager.call("_set_current_view", "roster")
 	await process_frame
 	config_rows = battle.get_node_or_null("UI/PrepPanel/MarginContainer/PrepContent/RosterScroll/ConfigRows")

@@ -411,6 +411,7 @@ func _add_formation_view() -> void:
 	_add_section_header("出撃メンバー")
 	for slot_index: int in MAX_ACTIVE_MEMBERS:
 		_add_party_row(slot_index)
+	_add_selected_member_preview_panel()
 
 
 func _add_roster_view() -> void:
@@ -597,6 +598,76 @@ func _add_summary_card(parent: GridContainer, title: String, value: String) -> v
 	value_label.add_theme_font_size_override("font_size", 15)
 	value_label.add_theme_color_override("font_color", UI_TEXT)
 	column.add_child(value_label)
+
+
+func _add_selected_member_preview_panel() -> void:
+	var panel := _create_panel("出撃プレビュー", "SelectedMemberPreviewPanel")
+	var content := panel.find_child("Content", true, false) as VBoxContainer
+	var grid := GridContainer.new()
+	grid.name = "SelectedMemberPreviewGrid"
+	grid.columns = MAX_ACTIVE_MEMBERS
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	content.add_child(grid)
+
+	for slot_index: int in MAX_ACTIVE_MEMBERS:
+		if slot_index >= selected_member_indices.size():
+			continue
+		_add_selected_member_preview_card(grid, slot_index, selected_member_indices[slot_index])
+
+
+func _add_selected_member_preview_card(parent: GridContainer, slot_index: int, member_index: int) -> void:
+	var member: Dictionary = guild_members[member_index]
+	_ensure_member_defaults(member)
+	var class_data: Dictionary = UNIT_DEFINITIONS[member["class_index"]]
+	var trait_data: Dictionary = _get_member_trait(member)
+
+	var card := PanelContainer.new()
+	card.name = "SelectedMemberPreview_%d" % slot_index
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size = Vector2(0.0, 58.0)
+	card.add_theme_stylebox_override("panel", _make_style(UI_PANEL_ALT, UI_BORDER, 1, 3))
+	parent.add_child(card)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 5)
+	card.add_child(margin)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 2)
+	margin.add_child(column)
+
+	var name_label := Label.new()
+	name_label.text = "%d. %s Lv%d  %s/%s" % [
+		slot_index + 1,
+		member["name"],
+		member["level"],
+		class_data["display_name"],
+		trait_data["display_name"],
+	]
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_label.add_theme_font_size_override("font_size", 14)
+	name_label.add_theme_color_override("font_color", UI_TEXT)
+	column.add_child(name_label)
+
+	var stat_label := Label.new()
+	stat_label.text = "%s / HP %d 攻 %d 射 %d 速 %d / EXP %d/%d" % [
+		_get_member_role_hint(member).replace("役割目安: ", ""),
+		member["hp"],
+		member["attack_power"],
+		int(member["attack_range"]),
+		int(member["move_speed"]),
+		member["xp"],
+		_get_xp_to_next(member),
+	]
+	stat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stat_label.add_theme_font_size_override("font_size", 13)
+	stat_label.add_theme_color_override("font_color", UI_MUTED)
+	column.add_child(stat_label)
 
 
 func _apply_static_ui_style() -> void:
