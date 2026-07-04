@@ -53,39 +53,39 @@ BattleScene (Node2D)
 
 ## 実装タスク
 
-- [ ] **Task 1: 戦闘後リザルト強化**
+- [x] **Task 1: 戦闘後リザルト強化**
   - 戦闘後に、勝敗、獲得名声、獲得Gold、出撃メンバーの経験値、レベルアップ、MVPを表示する。
   - MVPは与ダメージ、撃破数、生存などの簡易スコアから決める。
   - Skills: `godot-prompter:godot-ui`, `godot-prompter:hud-system`, `godot-prompter:godot-testing`
 
-- [ ] **Task 2: 戦闘統計の収集**
+- [x] **Task 2: 戦闘統計の収集**
   - `Unit` または `BattleManager` で与ダメージ、被ダメージ、撃破数、生存を集計する。
   - リザルトとMVP判定に使う。
   - Skills: `godot-prompter:component-system`, `godot-prompter:godot-testing`
 
-- [ ] **Task 3: 性格/才能の追加**
+- [x] **Task 3: 性格/才能の追加**
   - メンバー生成時に性格/才能を1つ付与する。
   - 最低6種類: `努力家`, `天才肌`, `慎重`, `勝負師`, `俊足`, `虚弱`。
   - 成長率、獲得経験値、移動速度、HPなどに小さな補正を入れる。
   - Skills: `godot-prompter:resource-pattern`, `godot-prompter:component-system`, `godot-prompter:godot-testing`
 
-- [ ] **Task 4: 任務タイプの追加**
+- [x] **Task 4: 任務タイプの追加**
   - 任務を最低3種類にする。
   - 例: `討伐任務` は経験値多め、`護衛任務` はGold多め、`遺跡探索` は名声多めで敵が強い。
   - ターンごとに任務を選べるようにする。
   - Skills: `godot-prompter:resource-pattern`, `godot-prompter:godot-ui`, `godot-prompter:godot-testing`
 
-- [ ] **Task 5: ギルドランク**
+- [x] **Task 5: ギルドランク**
   - 名声に応じて `E`, `D`, `C`, `B`, `A` に昇格する。
   - ランクで任務報酬、敵レベル、新人候補の基礎能力を変える。
   - Skills: `godot-prompter:resource-pattern`, `godot-prompter:save-load`, `godot-prompter:godot-testing`
 
-- [ ] **Task 6: 年度末リザルト**
+- [x] **Task 6: 年度末リザルト**
   - 年末大会後に年度末レポートを表示する。
   - 年間勝敗、大会結果、成長したメンバー、卒業生、新人加入をまとめる。
   - Skills: `godot-prompter:godot-ui`, `godot-prompter:hud-system`, `godot-prompter:save-load`
 
-- [ ] **Task 7: 3年終了リザルト**
+- [x] **Task 7: 3年終了リザルト**
   - 3年終了時に通算レポートを表示する。
   - 通算勝敗、大会優勝数、最高Lv、MVP回数、卒業生数、最終ギルドランクを表示する。
   - その後、続行または新規開始を選べるようにする。
@@ -96,7 +96,7 @@ BattleScene (Node2D)
   - 3年終了、リザルト生成、保存/ロード維持を検証する。
   - Skills: `godot-prompter:godot-testing`, `godot-dev-workflow`
 
-- [ ] **Task 9: 状態管理の分離**
+- [x] **Task 9: 状態管理の分離**
   - `BattleManager.gd` から `GuildState`、進行処理、保存処理を段階的に分ける。
   - 既存 smoke test をすべて通したまま移行する。
   - Skills: `godot-prompter:scene-organization`, `godot-prompter:component-system`, `godot-prompter:save-load`, `godot-prompter:godot-testing`

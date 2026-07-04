@@ -4,14 +4,16 @@ extends Area2D
 
 var team_id: int = -1
 var damage: int = 0
+var attacker_member_id: int = -1
 var hit_units: Array[int] = []
 
 @onready var visual: Polygon2D = $Visual
 
 
-func setup(new_team_id: int, new_damage: int, direction: Vector2, color: Color) -> void:
+func setup(new_team_id: int, new_damage: int, direction: Vector2, color: Color, new_attacker_member_id: int = -1) -> void:
 	team_id = new_team_id
 	damage = new_damage
+	attacker_member_id = new_attacker_member_id
 	rotation = direction.angle()
 
 	if is_node_ready():
@@ -41,4 +43,4 @@ func _apply_overlapping_hits() -> void:
 			continue
 
 		hit_units.append(unit_id)
-		body.call("take_damage", damage)
+		body.call("take_damage", damage, attacker_member_id)

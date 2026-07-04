@@ -13,9 +13,14 @@ Godot 4.6 の 2D ギルド育成オートバトルプロトタイプです。
 - 後衛は攻撃参加を優先しつつ、味方前衛の中心位置より前に出すぎないように動きます。
 - 近距離ユニットは斬撃、遠距離ユニットは弾の攻撃エフェクトでダメージを与えます。
 - 戦闘後に出撃メンバーが経験値を得て、レベルアップで能力が伸びます。
+- 戦闘後にMVP、獲得経験値、与ダメージ、被ダメージ、撃破数が表示されます。
+- メンバーには性格/才能があり、成長や能力に小さく影響します。
+- 討伐任務、護衛任務、遺跡探索の3種類の任務があります。
+- 名声に応じてギルドランクが上がり、敵や新人の質に影響します。
 - 1年は4ターンで、4ターン目は大会扱いになります。
 - 年度が進むと在籍年数が増え、長期的には卒業と新人加入が起きます。
 - 年間成績、総戦闘数、大会勝利数を記録します。
+- 3年終了時に通算成績レポートが表示されます。
 - `user://guild_save.json` に保存/ロードできます。
 - ギルド画面から訓練または戦闘を選び、勝敗後にギルド画面へ戻れます。
 
@@ -42,6 +47,7 @@ godot --headless --path . --script res://scripts/tools/guild_progression_smoke_t
 godot --headless --path . --script res://scripts/tools/guild_year_cycle_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/guild_three_year_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/ui_state_smoke_test.gd
+godot --headless --path . --script res://scripts/tools/beta_completion_smoke_test.gd
 godot --headless --path . --script res://scripts/tools/balance_sample_smoke_test.gd
 ```
 

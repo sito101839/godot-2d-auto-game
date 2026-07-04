@@ -17,19 +17,20 @@
 - [x] 年度更新がある。
 - [x] 卒業と新人加入がある。
 - [x] 保存/ロードがある。
-- [ ] 戦闘後リザルトにMVPが出る。
-- [ ] 戦闘統計が記録される。
-- [ ] 性格/才能がある。
-- [ ] 任務タイプが3種類ある。
-- [ ] ギルドランクがある。
-- [ ] 年度末リザルトがある。
-- [ ] 3年終了リザルトがある。
+- [x] 戦闘後リザルトにMVPが出る。
+- [x] 戦闘統計が記録される。
+- [x] 性格/才能がある。
+- [x] 任務タイプが3種類ある。
+- [x] ギルドランクがある。
+- [x] 年度末リザルトがある。
+- [x] 3年終了リザルトがある。
+- [x] 状態スナップショットと保存処理が分離されている。
 
 ## 完了前チェック
 
-- [ ] `godot --headless --path . --quit`
-- [ ] `.\scripts\tools\run_quality_checks.ps1`
-- [ ] `.\scripts\tools\run_quality_checks.ps1 -IncludeBalance`
-- [ ] `git diff --check`
+- [x] `godot --headless --path . --quit`
+- [x] `.\scripts\tools\run_quality_checks.ps1`
+- [x] `.\scripts\tools\run_quality_checks.ps1 -IncludeBalance`
+- [x] `git diff --check`
 
 チェック項目は、実装と検証が両方終わったときだけ完了にする。

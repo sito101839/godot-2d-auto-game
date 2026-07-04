@@ -30,6 +30,7 @@ var target: Unit = null
 var attack_cooldown: float = 0.0
 var is_dead: bool = false
 var effects_parent: Node2D = null
+var combat_reporter: Node = null
 
 @onready var visual: Polygon2D = $Visual
 @onready var hp_bar: ProgressBar = $HPBar
@@ -85,7 +86,8 @@ func setup(
 	new_effects_parent: Node2D,
 	new_display_name: String = "",
 	new_member_level: int = 1,
-	new_member_id: int = -1
+	new_member_id: int = -1,
+	new_combat_reporter: Node = null
 ) -> void:
 	team_id = new_team_id
 	unit_type_name = new_unit_type_name
@@ -94,6 +96,7 @@ func setup(
 	display_name = new_display_name
 	member_level = new_member_level
 	member_id = new_member_id
+	combat_reporter = new_combat_reporter
 	max_hp = new_max_hp
 	attack_power = new_attack_power
 	attack_range = new_attack_range
@@ -112,15 +115,23 @@ func setup(
 		_update_name_label()
 
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, attacker_member_id: int = -1) -> void:
 	if is_dead or amount <= 0:
 		return
 
+	var before_hp: int = hp
 	hp = max(0, hp - amount)
+	var actual_damage: int = before_hp - hp
 	_update_hp_bar()
 
 	if hp <= 0:
+		if combat_reporter != null and combat_reporter.has_method("record_combat_hit"):
+			combat_reporter.call("record_combat_hit", attacker_member_id, member_id, actual_damage, true)
 		_die()
+		return
+
+	if combat_reporter != null and combat_reporter.has_method("record_combat_hit"):
+		combat_reporter.call("record_combat_hit", attacker_member_id, member_id, actual_damage, false)
 
 
 func _find_target() -> Unit:
@@ -265,7 +276,7 @@ func _try_attack() -> void:
 
 func _spawn_attack_effect() -> void:
 	if effects_parent == null or not is_instance_valid(effects_parent):
-		target.take_damage(attack_power)
+		target.take_damage(attack_power, member_id)
 		return
 
 	var direction: Vector2 = global_position.direction_to(target.global_position)
@@ -282,14 +293,14 @@ func _spawn_slash_effect(direction: Vector2) -> void:
 	var slash := SLASH_EFFECT_SCENE.instantiate() as Area2D
 	effects_parent.add_child(slash)
 	slash.global_position = global_position
-	slash.call("setup", team_id, attack_power, direction, visual.color.lightened(0.35))
+	slash.call("setup", team_id, attack_power, direction, visual.color.lightened(0.35), member_id)
 
 
 func _spawn_projectile_effect(direction: Vector2) -> void:
 	var projectile := PROJECTILE_EFFECT_SCENE.instantiate() as Area2D
 	effects_parent.add_child(projectile)
 	projectile.global_position = global_position + direction * 24.0
-	projectile.call("setup", team_id, attack_power, direction, visual.color.lightened(0.25), target)
+	projectile.call("setup", team_id, attack_power, direction, visual.color.lightened(0.25), target, member_id)
 
 
 func _update_hp_bar() -> void:

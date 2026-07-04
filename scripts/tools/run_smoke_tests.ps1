@@ -40,6 +40,7 @@ $tests = @(
     @{ Name = "guild_year_cycle"; Script = "res://scripts/tools/guild_year_cycle_smoke_test.gd"; Marker = "SMOKE_TEST_PASS guild_year_cycle"; Optional = $false },
     @{ Name = "guild_three_year"; Script = "res://scripts/tools/guild_three_year_smoke_test.gd"; Marker = "SMOKE_TEST_PASS guild_three_year_cycle"; Optional = $false },
     @{ Name = "ui_state"; Script = "res://scripts/tools/ui_state_smoke_test.gd"; Marker = "SMOKE_TEST_PASS ui_state"; Optional = $false },
+    @{ Name = "beta_completion"; Script = "res://scripts/tools/beta_completion_smoke_test.gd"; Marker = "SMOKE_TEST_PASS beta_completion"; Optional = $false },
     @{ Name = "balance_sample"; Script = "res://scripts/tools/balance_sample_smoke_test.gd"; Marker = "SMOKE_TEST_PASS balance_sample"; Optional = $true }
 )
 

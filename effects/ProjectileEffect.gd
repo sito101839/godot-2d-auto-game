@@ -7,15 +7,17 @@ var team_id: int = -1
 var damage: int = 0
 var direction: Vector2 = Vector2.RIGHT
 var target: Node2D = null
+var attacker_member_id: int = -1
 
 @onready var visual: Polygon2D = $Visual
 
 
-func setup(new_team_id: int, new_damage: int, new_direction: Vector2, color: Color, new_target: Node2D) -> void:
+func setup(new_team_id: int, new_damage: int, new_direction: Vector2, color: Color, new_target: Node2D, new_attacker_member_id: int = -1) -> void:
 	team_id = new_team_id
 	damage = new_damage
 	direction = new_direction.normalized()
 	target = new_target
+	attacker_member_id = new_attacker_member_id
 	rotation = direction.angle()
 
 	if is_node_ready():
@@ -48,7 +50,7 @@ func _apply_first_hit() -> void:
 		if body.get("is_dead") or body.get("team_id") == team_id:
 			continue
 
-		body.call("take_damage", damage)
+		body.call("take_damage", damage, attacker_member_id)
 		queue_free()
 		return
 
@@ -61,5 +63,5 @@ func _apply_hit_to_target(body: Node2D) -> void:
 		queue_free()
 		return
 
-	body.call("take_damage", damage)
+	body.call("take_damage", damage, attacker_member_id)
 	queue_free()
