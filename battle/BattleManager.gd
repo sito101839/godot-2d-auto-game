@@ -403,7 +403,7 @@ func _add_overview_summary_panel() -> void:
 	_add_summary_card(grid, "通算", "%d戦 / 優勝 %d" % [total_battles, tournament_wins])
 	_add_summary_card(grid, "メンバー", "出撃 %d / 所属 %d" % [selected_member_indices.size(), guild_members.size()])
 	_add_summary_card(grid, "次の任務", str(_get_current_mission()["display_name"]) if current_turn != TURNS_PER_YEAR else "年末大会")
-	_add_summary_card(grid, "卒業", "%d人" % graduated_count)
+	_add_summary_card(grid, "世代/育成", "卒業%d / %s" % [graduated_count, _get_growth_candidate_text()])
 
 
 func _add_year_progress_panel() -> void:
@@ -1217,6 +1217,20 @@ func _get_rank_progress_text() -> String:
 		if fame < threshold:
 			return "名声 %d / 次%sまで%d" % [fame, rank["name"], threshold - fame]
 	return "名声 %d / 最高ランク" % fame
+
+
+func _get_growth_candidate_text() -> String:
+	if guild_members.is_empty():
+		return "候補なし"
+
+	var best_member: Dictionary = guild_members[0]
+	var best_remaining: int = _get_xp_to_next(best_member) - int(best_member["xp"])
+	for member: Dictionary in guild_members:
+		var remaining: int = _get_xp_to_next(member) - int(member["xp"])
+		if remaining < best_remaining:
+			best_member = member
+			best_remaining = remaining
+	return "%s 次Lv%d" % [best_member["name"], max(0, best_remaining)]
 
 
 func _get_member_trait(member: Dictionary) -> Dictionary:

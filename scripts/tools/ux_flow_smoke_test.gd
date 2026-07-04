@@ -70,6 +70,10 @@ func _run() -> void:
 		push_error("Expected overview to show next guild rank progress, got: %s" % overview_text)
 		_fail(battle)
 		return
+	if not overview_text.contains("次Lv"):
+		push_error("Expected overview to show next level growth candidate, got: %s" % overview_text)
+		_fail(battle)
+		return
 
 	var action_panel := _find_latest_named(priority_rows, "ActionPanel")
 	if action_panel == null:
